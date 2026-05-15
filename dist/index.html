@@ -1687,16 +1687,11 @@
                         <button id="btn-fspl-dme" class="papi-mode-btn" onclick="setFsplMode('dme')">DME (UHF)</button>
                     </div>
 
-                    <!-- Inputs -->
-                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:15px;">
+                    <!-- Inputs Row 1: Frequency + Distance -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
                         <div class="form-group" style="margin-bottom:0;">
                             <label class="form-label" style="font-size:0.8rem;">VOR Frequency (MHz)</label>
                             <input type="number" inputmode="decimal" id="fspl-freq" placeholder="e.g. 115.0" step="0.05"
-                                style="padding:8px;" oninput="calcSignalAnalysis()">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label" style="font-size:0.8rem;">TX Power (Watts)</label>
-                            <input type="number" inputmode="numeric" id="fspl-txPower" placeholder="VOR: 50–200W typical"
                                 style="padding:8px;" oninput="calcSignalAnalysis()">
                         </div>
                         <div class="form-group" style="margin-bottom:0;">
@@ -1707,6 +1702,19 @@
                                 <button class="btn-mini" style="padding:4px 8px; font-size:0.65rem; white-space:nowrap; color:var(--accent-cyan); border-color:var(--accent-cyan);"
                                     onclick="syncFsplDist()" title="Sync from VOR Siting card">Sync</button>
                             </div>
+                        </div>
+                    </div>
+                    <!-- Inputs Row 2: TX Powers (separate per system) -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:0.8rem; color:var(--accent-cyan);">VOR TX Power (W)</label>
+                            <input type="number" inputmode="numeric" id="fspl-vor-txPower" placeholder="50–200 W"
+                                style="padding:8px;" oninput="calcSignalAnalysis()">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:0.8rem; color:var(--accent-warning);">DME TX Power (W)</label>
+                            <input type="number" inputmode="numeric" id="fspl-dme-txPower" placeholder="100–200 W"
+                                style="padding:8px;" oninput="calcSignalAnalysis()">
                         </div>
                     </div>
 
@@ -4124,13 +4132,6 @@
             fsplMode = mode;
             document.getElementById('btn-fspl-vor').className = (mode === 'vor') ? 'papi-mode-btn active' : 'papi-mode-btn';
             document.getElementById('btn-fspl-dme').className = (mode === 'dme') ? 'papi-mode-btn active' : 'papi-mode-btn';
-            // Update placeholder hint
-            const txInput = document.getElementById('fspl-txPower');
-            if (mode === 'vor') {
-                txInput.placeholder = 'VOR: 50–200W typical';
-            } else {
-                txInput.placeholder = 'DME: 100–1000W typical';
-            }
             // Toggle DME two-way section
             const dmeSection = document.getElementById('fspl-dme-twoway');
             if (dmeSection) dmeSection.style.display = (mode === 'dme') ? 'block' : 'none';
@@ -4189,18 +4190,20 @@
         }
 
         function clearSignalAnalysis() {
-            clearIds('fspl-freq', 'fspl-txPower', 'fspl-dist');
+            clearIds('fspl-freq', 'fspl-vor-txPower', 'fspl-dme-txPower', 'fspl-dist');
             calcSignalAnalysis();
         }
 
         function calcSignalAnalysis() {
             const freqEl = document.getElementById('fspl-freq');
-            const txEl = document.getElementById('fspl-txPower');
+            const vorTxEl = document.getElementById('fspl-vor-txPower');
+            const dmeTxEl = document.getElementById('fspl-dme-txPower');
             const distEl = document.getElementById('fspl-dist');
-            if (!freqEl || !txEl || !distEl) return;
+            if (!freqEl || !vorTxEl || !dmeTxEl || !distEl) return;
 
             const vorFreq = parseFloat(freqEl.value);
-            const txPower = parseFloat(txEl.value);
+            const vorTxPower = parseFloat(vorTxEl.value);
+            const dmeTxPower = parseFloat(dmeTxEl.value);
             const dist = parseFloat(distEl.value);
 
             // Auto-derive DME frequency
@@ -4213,26 +4216,28 @@
                 }
             }
 
-            // Reset outputs if inputs missing
-            const needCalc = !isNaN(vorFreq) && !isNaN(txPower) && !isNaN(dist) && vorFreq > 0 && txPower > 0 && dist > 0;
+            // Independent needCalc per system
+            const needBase = !isNaN(vorFreq) && !isNaN(dist) && vorFreq > 0 && dist > 0;
+            const needVorCalc = needBase && !isNaN(vorTxPower) && vorTxPower > 0;
+            const needDmeCalc = needBase && !isNaN(dmeTxPower) && dmeTxPower > 0;
 
             // --- VOR one-way ---
-            const vorResult = needCalc ? calcLinkBudget(txPower, vorFreq, dist) : null;
+            const vorResult = needVorCalc ? calcLinkBudget(vorTxPower, vorFreq, dist) : null;
             const vorMargin = vorResult ? (vorResult.rxPower - VOR_RX_SENS) : null;
-            const vorMaxRange = needCalc ? calcMaxRangeNm(txPower, vorFreq, VOR_RX_SENS) : null;
+            const vorMaxRange = needVorCalc ? calcMaxRangeNm(vorTxPower, vorFreq, VOR_RX_SENS) : null;
 
             // --- DME two-way ---
             const dmeFreq = !isNaN(vorFreq) ? getDmeFreqFromVor(vorFreq) : 0;
-            // Downlink: Ground transponder → Aircraft
-            const dmeDown = (needCalc && dmeFreq > 0) ? calcLinkBudget(txPower, dmeFreq, dist) : null;
+            // Downlink: Ground transponder → Aircraft (uses DME ground TX power)
+            const dmeDown = (needDmeCalc && dmeFreq > 0) ? calcLinkBudget(dmeTxPower, dmeFreq, dist) : null;
             const dmeDownMargin = dmeDown ? (dmeDown.rxPower - DME_RX_SENS) : null;
-            // Uplink: Aircraft interrogator → Ground transponder
-            const dmeUp = (needCalc && dmeFreq > 0) ? calcLinkBudget(DME_INTERR_POWER, dmeFreq, dist) : null;
+            // Uplink: Aircraft interrogator → Ground transponder (hardcoded interrogator power)
+            const dmeUp = (needDmeCalc && dmeFreq > 0) ? calcLinkBudget(DME_INTERR_POWER, dmeFreq, dist) : null;
             const dmeUpMargin = dmeUp ? (dmeUp.rxPower - DME_XPDR_SENS) : null;
             // Weak link
             const dmeWeakMargin = (dmeDownMargin !== null && dmeUpMargin !== null) ? Math.min(dmeDownMargin, dmeUpMargin) : null;
-            const dmeMaxDown = (needCalc && dmeFreq > 0) ? calcMaxRangeNm(txPower, dmeFreq, DME_RX_SENS) : null;
-            const dmeMaxUp = (needCalc && dmeFreq > 0) ? calcMaxRangeNm(DME_INTERR_POWER, dmeFreq, DME_XPDR_SENS) : null;
+            const dmeMaxDown = (needDmeCalc && dmeFreq > 0) ? calcMaxRangeNm(dmeTxPower, dmeFreq, DME_RX_SENS) : null;
+            const dmeMaxUp = (needDmeCalc && dmeFreq > 0) ? calcMaxRangeNm(DME_INTERR_POWER, dmeFreq, DME_XPDR_SENS) : null;
             const dmeMaxRange = (dmeMaxDown !== null && dmeMaxUp !== null) ? Math.min(dmeMaxDown, dmeMaxUp) : null;
 
             // --- Update UI based on mode ---
@@ -4308,10 +4313,10 @@
             }
 
             // --- Draw canvas ---
-            drawSignalCurve(vorFreq, dmeFreq, txPower, vorMaxRange, dmeMaxRange);
+            drawSignalCurve(vorFreq, dmeFreq, vorTxPower, dmeTxPower, vorMaxRange, dmeMaxRange);
         }
 
-        function drawSignalCurve(vorFreq, dmeFreq, txPower, vorMaxNm, dmeMaxNm) {
+        function drawSignalCurve(vorFreq, dmeFreq, vorTxPower, dmeTxPower, vorMaxNm, dmeMaxNm) {
             const c = document.getElementById('fsplCanvas');
             if (!c || c.clientWidth === 0) return;
 
@@ -4323,14 +4328,14 @@
             const w = c.clientWidth, h = c.clientHeight;
             ctx.clearRect(0, 0, w, h);
 
-            if (!vorFreq || !txPower || vorFreq <= 0 || txPower <= 0) return;
+            if (!vorFreq || vorFreq <= 0 || (!vorTxPower && !dmeTxPower)) return;
 
             const padL = 55, padR = 20, padT = 15, padB = 35;
             const dw = w - padL - padR, dh = h - padT - padB;
 
-            // Determine axis ranges
+            // Determine axis ranges — use the higher TX power for Y-axis scaling
             const maxDist = Math.max(vorMaxNm || 200, dmeMaxNm || 50, 50) * 1.3;
-            const txDbm = wattsTodBm(txPower);
+            const txDbm = wattsTodBm(Math.max(vorTxPower || 1, dmeTxPower || 1));
             const minDbm = Math.min(VOR_RX_SENS, DME_RX_SENS, DME_XPDR_SENS) - 15;
             const maxDbm = txDbm - 20;
 
@@ -4373,11 +4378,12 @@
 
             // VOR signal curve (cyan)
             const steps = 80;
+            if (vorTxPower > 0) {
             ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 2.5;
             ctx.beginPath();
             for (let i = 1; i <= steps; i++) {
                 const d = (i / steps) * maxDist;
-                const lb = calcLinkBudget(txPower, vorFreq, d);
+                const lb = calcLinkBudget(vorTxPower, vorFreq, d);
                 const y = toY(lb.rxPower);
                 if (i === 1) ctx.moveTo(toX(d), y); else ctx.lineTo(toX(d), y);
             }
@@ -4385,16 +4391,17 @@
             // Label
             ctx.fillStyle = '#06b6d4'; ctx.font = 'bold 10px Inter'; ctx.textAlign = 'left';
             const vorLabelD = maxDist * 0.15;
-            const vorLabelLb = calcLinkBudget(txPower, vorFreq, vorLabelD);
+            const vorLabelLb = calcLinkBudget(vorTxPower, vorFreq, vorLabelD);
             ctx.fillText('VOR (' + Math.round(vorFreq) + ' MHz)', toX(vorLabelD) + 5, toY(vorLabelLb.rxPower) - 6);
+            }
 
             // DME signal curve (amber) — downlink (weaker leg typically)
-            if (dmeFreq > 0) {
+            if (dmeFreq > 0 && dmeTxPower > 0) {
                 ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 for (let i = 1; i <= steps; i++) {
                     const d = (i / steps) * maxDist;
-                    const lb = calcLinkBudget(txPower, dmeFreq, d);
+                    const lb = calcLinkBudget(dmeTxPower, dmeFreq, d);
                     const y = toY(lb.rxPower);
                     if (i === 1) ctx.moveTo(toX(d), y); else ctx.lineTo(toX(d), y);
                 }
@@ -4402,7 +4409,7 @@
                 // Label
                 ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 10px Inter';
                 const dmeLabelD = maxDist * 0.15;
-                const dmeLabelLb = calcLinkBudget(txPower, dmeFreq, dmeLabelD);
+                const dmeLabelLb = calcLinkBudget(dmeTxPower, dmeFreq, dmeLabelD);
                 ctx.fillText('DME (' + dmeFreq + ' MHz)', toX(dmeLabelD) + 5, toY(dmeLabelLb.rxPower) + 14);
 
                 // Shade the gap between curves at distance entered
@@ -4413,17 +4420,19 @@
                     ctx.beginPath(); ctx.moveTo(xLine, padT); ctx.lineTo(xLine, h - padB); ctx.stroke();
                     ctx.setLineDash([]);
                     // Mark points
-                    const vorPt = calcLinkBudget(txPower, vorFreq, distVal);
-                    const dmePt = calcLinkBudget(txPower, dmeFreq, distVal);
-                    ctx.fillStyle = '#06b6d4'; ctx.beginPath(); ctx.arc(xLine, toY(vorPt.rxPower), 4, 0, Math.PI * 2); ctx.fill();
+                    const vorPt = vorTxPower > 0 ? calcLinkBudget(vorTxPower, vorFreq, distVal) : null;
+                    const dmePt = calcLinkBudget(dmeTxPower, dmeFreq, distVal);
+                    if (vorPt) { ctx.fillStyle = '#06b6d4'; ctx.beginPath(); ctx.arc(xLine, toY(vorPt.rxPower), 4, 0, Math.PI * 2); ctx.fill(); }
                     ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(xLine, toY(dmePt.rxPower), 4, 0, Math.PI * 2); ctx.fill();
-                    // Gap arrow
+                    // Gap arrow (only when both curves are present)
+                    if (vorPt) {
                     const gap = vorPt.rxPower - dmePt.rxPower;
                     if (gap > 2) {
                         ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
                         ctx.fillRect(xLine - 12, toY(vorPt.rxPower), 24, toY(dmePt.rxPower) - toY(vorPt.rxPower));
                         ctx.fillStyle = '#ef4444'; ctx.font = 'bold 9px Inter'; ctx.textAlign = 'center';
                         ctx.fillText('Δ' + gap.toFixed(0) + 'dB', xLine, (toY(vorPt.rxPower) + toY(dmePt.rxPower)) / 2 + 3);
+                    }
                     }
                 }
             }
