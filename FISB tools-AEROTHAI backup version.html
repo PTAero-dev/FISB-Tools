@@ -7,7 +7,7 @@
     <meta name="description" content="A professional suite of aeronautical tools for AEROTHAI, including PAPI, VOR, ILS, and Gradient calculation modules optimized for flight inspection and site survey.">
     <meta name="theme-color" content="#0a0a12">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
-    <title>AEROTHAI_FISB tools_MAY 26</title>
+    <title>AEROTHAI_FISB tools_APR 26</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -321,10 +321,6 @@
             margin-bottom: 8px;
         }
 
-        .mobile-br {
-            display: none;
-        }
-
         .input-wrapper {
             position: relative;
         }
@@ -609,29 +605,6 @@
             textarea {
                 font-size: 16px !important;
             }
-
-            /* Fix label alignment for wrapped text */
-            .form-label {
-                min-height: 2.5em;
-                display: flex;
-                align-items: flex-end;
-                line-height: 1.1;
-                margin-bottom: 4px;
-            }
-
-            .mobile-br {
-                display: block;
-            }
-
-            /* Angle Converter Mobile Optimization */
-            .angle-row-input {
-                padding-left: 4px !important;
-                padding-right: 4px !important;
-            }
-            .angle-row-gap {
-                gap: 4px !important;
-            }
-        }
         }
 
         /* UTILITY HIDDEN */
@@ -897,7 +870,7 @@
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
             </svg>
-            AEROTHAI_FISB tools_MAY 26
+            AEROTHAI_FISB tools_APR 26
         </div>
         <nav class="nav-menu">
             <div class="nav-item active" onclick="switchTab('tab-gradient', this)">IFP Gradient</div>
@@ -1057,63 +1030,6 @@
                 <!-- Dynamic cards added here -->
             </div>
 
-            <!-- ANGLE CONVERTER CARD -->
-            <div class="card" style="margin-top:25px;">
-                <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
-                    <h2 class="card-title">Angle Converter <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted); margin-left:8px;">Decimal ↔ Deg° Min'</span></h2>
-                    <button class="btn-mini danger" onclick="event.stopPropagation(); [1,2,3,4].forEach(r => clearAngRow(r));" title="Clear All Rows">CLEAR</button>
-                </div>
-                <div class="card-content">
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <!-- Column Headers -->
-                        <div style="display:flex; gap:8px; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border-light);">
-                            <div style="width:22px;"></div>
-                            <div style="flex:1; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; text-align:center; letter-spacing:0.05em;">Decimal (°)</div>
-                            <div style="width:22px;"></div>
-                            <div style="flex:0.8; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; text-align:center; letter-spacing:0.05em;">Deg</div>
-                            <div style="flex:1.2; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; text-align:center; letter-spacing:0.05em;">Min'</div>
-                            <div style="width:36px;"></div>
-                        </div>
-                        <!-- Row 1 -->
-                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
-                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">1</div>
-                            <input type="text" inputmode="decimal" id="ang-dec-1" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-dec-2'); convertAngDecToDM(1)">
-                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
-                            <input type="text" inputmode="numeric" id="ang-d-1" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-1'); convertAngDMToDec(1)">
-                            <input type="text" inputmode="numeric" id="ang-m-1" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-d-2'); convertAngDMToDec(1)">
-                            <button class="btn-mini danger" onclick="clearAngRow(1)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
-                        </div>
-                        <!-- Row 2 -->
-                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
-                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">2</div>
-                            <input type="text" inputmode="decimal" id="ang-dec-2" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-dec-3'); convertAngDecToDM(2)">
-                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
-                            <input type="text" inputmode="numeric" id="ang-d-2" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-2'); convertAngDMToDec(2)">
-                            <input type="text" inputmode="numeric" id="ang-m-2" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-d-3'); convertAngDMToDec(2)">
-                            <button class="btn-mini danger" onclick="clearAngRow(2)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
-                        </div>
-                        <!-- Row 3 -->
-                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
-                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">3</div>
-                            <input type="text" inputmode="decimal" id="ang-dec-3" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-dec-4'); convertAngDecToDM(3)">
-                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
-                            <input type="text" inputmode="numeric" id="ang-d-3" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-3'); convertAngDMToDec(3)">
-                            <input type="text" inputmode="numeric" id="ang-m-3" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-d-4'); convertAngDMToDec(3)">
-                            <button class="btn-mini danger" onclick="clearAngRow(3)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
-                        </div>
-                        <!-- Row 4 -->
-                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
-                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">4</div>
-                            <input type="text" inputmode="decimal" id="ang-dec-4" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="convertAngDecToDM(4)">
-                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
-                            <input type="text" inputmode="numeric" id="ang-d-4" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-4'); convertAngDMToDec(4)">
-                            <input type="text" inputmode="numeric" id="ang-m-4" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="convertAngDMToDec(4)">
-                            <button class="btn-mini danger" onclick="clearAngRow(4)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- REF CARD -->
             <div class="card" style="margin-top:25px;">
                 <div class="card-header minimizable minimized-header" onclick="toggleCard(this)" title="Click to Minimize/Expand">
@@ -1193,9 +1109,9 @@
                             <h2 class="card-title" style="flex-shrink:0;">Find Unknown</h2>
                             <select id="theo-mode" class="vp-input" style="max-width:200px; height:36px; padding:0 10px;" onchange="updateTheoUI(); calculateTheodolite();">
                                 <option value="dist">Distance (D)</option>
-                                <option value="elev">PAPI Lens Height (X)</option>
+                                <option value="elev">Elevation (X)</option>
                                 <option value="angle">Path Angle (θ)</option>
-                                <option value="h1">Theodolite Height (H)</option>
+                                <option value="h1">Theodolite Hgt (H)</option>
                             </select>
                             <button class="btn-mini" style="margin-left:auto; background:rgba(255,255,255,0.05);" onclick="clearTheodolite()">RESET</button>
                         </div>
@@ -1250,7 +1166,7 @@
                         </div>
                     </div>
                     <div class="card-content">
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:25px;">
+                        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:25px;">
                             <!-- Settings -->
                             <div style="background:rgba(0,0,0,0.1); padding:20px; border-radius:12px; border:1px solid var(--border-light);">
                                 <h3 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:15px;">Site Conditions</h3>
@@ -2555,9 +2471,11 @@
             setTimeout(() => {
                 if (tabId === 'tab-papi') { updatePapiDraw('papi1'); updatePapiDraw('papi2'); }
                 if (tabId === 'tab-gradient') {
-                    document.querySelectorAll('#grad-legs-container .card').forEach(card => {
-                        calculateGradient(card.id ? card.id.replace('card-', '') : 'grad');
-                    });
+                    // Dynamic redraw for all legs
+                    for (let i = 1; i <= gradLegCount; i++) {
+                        let p = (i === 1) ? 'grad' : 'grad' + i;
+                        calculateGradient(p);
+                    }
                 }
                 if (tabId === 'tab-vor') { calculateVOR(); calcVorTime(); calcVorSiting(); calcSignalAnalysis(); }
                 if (tabId === 'tab-ils') { calcILS(); drawFltCk(); }
@@ -2615,14 +2533,33 @@
             // --- AUTO-FILL START ALT FROM PREVIOUS LEG ---
             let prevEndAlt = "";
             let prevEndDist = "";
-            const existingCards = Array.from(container.querySelectorAll('.card'));
-            if (existingCards.length > 0) {
-                const lastExistingCard = existingCards[existingCards.length - 1];
-                const lastPrefix = lastExistingCard.id ? lastExistingCard.id.replace('card-', '') : 'grad';
-                const lastEndEl = document.getElementById(lastPrefix + '-endAlt');
-                const lastEndDistEl = document.getElementById(lastPrefix + '-edist');
-                if (lastEndEl && lastEndEl.value !== '') prevEndAlt = lastEndEl.value;
-                if (lastEndDistEl && lastEndDistEl.value !== '') prevEndDist = lastEndDistEl.value;
+            let prevLegNum = gradLegCount - 1;
+            // Find the actual previous visible leg? 
+            // Simple approach: look at the last child of container?
+            // Or just use the tracking logic (might break if middle deleted).
+            // Robust approach: get last child of container.
+
+            const lastCard = container.lastElementChild;
+            if (lastCard) {
+                // Try to find inputs in last card
+                const inputs = lastCard.querySelectorAll('input');
+                // Assuming standard IDs... this is hard if IDs are leg-specific.
+                // Let's stick to specific ID lookups for now, assuming sequential adds.
+                // If a leg is deleted, we might not find 'grad(count-1)'. 
+                // We should look for the Highest ID currently existing? 
+                // Or just look for the last added ID (which might be deleted).
+
+                // Improvement: Scan for last valid leg index
+                for (let i = gradLegCount - 1; i >= 1; i--) {
+                    let p = (i === 1) ? 'grad' : 'grad' + i;
+                    let el = document.getElementById(p + '-endAlt');
+                    if (el) {
+                        if (el.value !== "") prevEndAlt = el.value;
+                        let elDist = document.getElementById(p + '-edist');
+                        if (elDist && elDist.value !== "") prevEndDist = elDist.value;
+                        break;
+                    }
+                }
             }
             // ---------------------------------------------
 
@@ -2632,7 +2569,7 @@
 
             card.innerHTML = `
                     <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
-                        <div class="card-title">Leg ${existingCards.length + 1} <span id="${id}-header-info" style="font-size:0.9rem; font-weight:400; color:var(--text-muted); margin-left:10px;"></span></div>
+                        <div class="card-title">Leg ${gradLegCount} <span id="${id}-header-info" style="font-size:0.9rem; font-weight:400; color:var(--text-muted); margin-left:10px;"></span></div>
                         <div style="display:flex; gap:5px;">
                             <button class="btn-mini danger"
                                 onclick="event.stopPropagation(); deleteGradientLeg('${id}');">DELETE</button>
@@ -2708,12 +2645,6 @@
         function deleteGradientLeg(id) {
             const card = document.getElementById('card-' + id);
             if (card) card.remove();
-            document.querySelectorAll('#grad-legs-container .card').forEach((c, idx) => {
-                const titleEl = c.querySelector('.card-title');
-                if (titleEl && titleEl.firstChild && titleEl.firstChild.nodeType === Node.TEXT_NODE) {
-                    titleEl.firstChild.textContent = `Leg ${idx + 1} `;
-                }
-            });
         }
 
         function calcGradStart(offset = 0) {
@@ -2829,17 +2760,21 @@
             // But usually we just look for 'grad' + (current + 1).
             // If that element doesn't exist, we skip.
 
-            const gradCont = document.getElementById('grad-legs-container');
-            const allLegCards = gradCont ? Array.from(gradCont.querySelectorAll('.card')) : [];
-            const currentCard = (prefix === 'grad')
-                ? allLegCards[0]
-                : document.getElementById('card-' + prefix);
-            const currentIdx = allLegCards.indexOf(currentCard);
-            if (currentIdx !== -1 && currentIdx < allLegCards.length - 1) {
-                const nextCard = allLegCards[currentIdx + 1];
-                const nextPrefix = nextCard.id ? nextCard.id.replace('card-', '') : 'grad';
-                const nextStartEl = document.getElementById(nextPrefix + '-startAlt');
-                const nextStartDistEl = document.getElementById(nextPrefix + '-sdist');
+            let currentLegNum = 1;
+            if (prefix !== 'grad') {
+                currentLegNum = parseInt(prefix.replace('grad', ''));
+            }
+            if (!isNaN(currentLegNum)) {
+                let nextLegNum = currentLegNum + 1;
+                // Try to find next leg. It might be 'grad'+nextLegNum.
+                // If user deleted 'grad3', then 'grad4' might exist? 
+                // Our add function increments counter strictly. So grad4 exists.
+                // If grad3 deleted, grad2 should update grad4? No, chain is broken.
+                // We only update if the IMMEDIATE NEXT sequential ID exists.
+
+                let nextPrefix = (nextLegNum === 1) ? 'grad' : 'grad' + nextLegNum;
+                let nextStartEl = document.getElementById(nextPrefix + '-startAlt');
+                let nextStartDistEl = document.getElementById(nextPrefix + '-sdist');
 
                 if (nextStartEl && !isNaN(eAlt)) {
                     if (nextStartEl.value === "") {
@@ -3067,12 +3002,12 @@
                     <div class="card-content">
                         <div class="grid-3-col" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; margin-bottom:15px;">
                             <div class="form-group" style="margin-bottom:0;">
-                                <label class="form-label">ICAO /<br class="mobile-br"> Ident</label>
+                                <label class="form-label">ICAO / Ident</label>
                                 <input type="text" id="${id}-id" maxlength="4" style="text-transform: uppercase;"
                                     placeholder="RWY" oninput="this.value=this.value.toUpperCase(); updatePapiDraw('${id}')">
                             </div>
                             <div class="form-group" style="margin-bottom:0;">
-                                <label class="form-label">Comm. Angle (°)</label>
+                                <label class="form-label">Comm. Angle (CA) °</label>
                                 <input type="number" inputmode="decimal" id="${id}-ca" step="0.01" value="3.00"
                                     oninput="calculatePAPI('${id}')">
                             </div>
@@ -3393,40 +3328,6 @@
             
             ctx.fillStyle = labelColor; ctx.font = "bold 14px Inter"; ctx.textAlign = "center";
             ctx.fillText("LANDING DIRECTION →", w/2, h - 10);
-        }
-
-        // --- ANGLE CONVERTER ---
-        function convertAngDecToDM(row) {
-            const decEl = document.getElementById('ang-dec-' + row);
-            const dEl = document.getElementById('ang-d-' + row);
-            const mEl = document.getElementById('ang-m-' + row);
-            if (!decEl || !dEl || !mEl) return;
-            const dec = parseFloat(decEl.value);
-            if (isNaN(dec)) { dEl.value = ''; mEl.value = ''; return; }
-            const absVal = Math.abs(dec);
-            const d = Math.floor(absVal);
-            const m = (absVal - d) * 60;
-            dEl.value = dec < 0 ? ('-' + d) : String(d);
-            mEl.value = m.toFixed(3);
-        }
-
-        function convertAngDMToDec(row) {
-            const decEl = document.getElementById('ang-dec-' + row);
-            const dEl = document.getElementById('ang-d-' + row);
-            const mEl = document.getElementById('ang-m-' + row);
-            if (!decEl || !dEl || !mEl) return;
-            const d = parseFloat(dEl.value);
-            const m = parseFloat(mEl.value);
-            if (isNaN(d)) { decEl.value = ''; return; }
-            const sign = d < 0 ? -1 : 1;
-            decEl.value = (sign * (Math.abs(d) + (isNaN(m) ? 0 : m) / 60)).toFixed(4);
-        }
-
-        function clearAngRow(row) {
-            ['ang-dec-', 'ang-d-', 'ang-m-'].forEach(prefix => {
-                const el = document.getElementById(prefix + row);
-                if (el) el.value = '';
-            });
         }
 
         // --- VOR MODULE ---
@@ -4592,7 +4493,7 @@
             const baseD = (1.50 - xVal) / tanA;
 
             // Generate variations
-            const heights = [1.45, 1.50, 1.55, 1.60, 1.65, 1.70, 1.75, 1.80];
+            const heights = [1.50, 1.55, 1.60, 1.65, 1.70, 1.75, 1.80];
             let html = "";
 
             heights.forEach(h => {

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Copy-Item \"d:\\\\Antigravity.Projects\\\\FISB Tools\\\\dist\\\\index.html\" \"d:\\\\Antigravity.Projects\\\\FISB Tools\\\\AEROTHAI_FISB tools_MAY 26.html\")",
+      "PowerShell(Rename-Item \"d:\\\\Antigravity.Projects\\\\FISB Tools\\\\AEROTHAI_FISB tools_MAY 26.html\" \"FISB tools-AEROTHAI_MAY 26.html\")",
+      "PowerShell(Rename-Item \"d:\\\\Antigravity.Projects\\\\FISB Tools\\\\FISB tools-AEROTHAI ver.3.html\" \"FISB tools-AEROTHAI backup version.html\")"
+    ]
+  }
+}
