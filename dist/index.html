@@ -2539,10 +2539,6 @@
             if (val < 0) el.value = 0;
         }
 
-        // --- UTILS ---
-        document.querySelector('.page-title').textContent += "";
-
-
         // --- NAVIGATION ---
         function switchTab(tabId, btn) {
             document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
@@ -2579,6 +2575,7 @@
         }
 
         function formatMinSec(decimalMin) {
+            if (isNaN(decimalMin) || !isFinite(decimalMin) || decimalMin < 0) return "--:--";
             let m = Math.floor(decimalMin);
             let s = Math.round((decimalMin - m) * 60);
             if (s === 60) { m++; s = 0; }
@@ -2811,10 +2808,10 @@
                     eAltInput.value = Math.round(newEnd);
                 }
                 else if (!isNaN(sAlt) && !isNaN(eAlt) && isNaN(d)) {
-                    // Calc Dist
+                    // Calc Dist — guard: tan(0) = 0 and tan(≥90°) = huge/undefined
                     let rise = eAlt - sAlt;
                     let rad = angIn * Math.PI / 180;
-                    if (rad !== 0) {
+                    if (rad > 0 && rad < Math.PI / 2) {
                         let runFt = rise / Math.tan(rad);
                         d = runFt / FT_PER_NM;
                         distInput.value = Math.abs(d).toFixed(2);
@@ -2868,7 +2865,7 @@
             const headerInfoEl = document.getElementById(prefix + '-header-info');
             const canvas = document.getElementById(prefix + 'Canvas');
 
-            if (isNaN(sAlt) || isNaN(eAlt) || isNaN(d)) {
+            if (isNaN(sAlt) || isNaN(eAlt) || isNaN(d) || d <= 0) {
                 // Reset outputs
                 typeEl.textContent = "---"; typeEl.className = "result-value";
                 deltaEl.textContent = "0 ft";
@@ -3216,7 +3213,8 @@
             let caVal = 3.00;
             const caInput = document.getElementById(id + '-ca');
             if (caInput && caInput.value !== "") {
-                caVal = parseFloat(caInput.value) || 3.00;
+                const _caParsed = parseFloat(caInput.value);
+                caVal = (!isNaN(_caParsed) && _caParsed > 0) ? _caParsed : 3.00;
             }
 
             let minutes = [];
@@ -4502,14 +4500,14 @@
 
             try {
                 if (mode === 'dist') {
-                    if (isNaN(aVal) || isNaN(hVal) || isNaN(xVal) || aVal <= 0) throw new Error();
+                    if (isNaN(aVal) || isNaN(hVal) || isNaN(xVal) || aVal <= 0 || aVal >= 90) throw new Error();
                     const aRad = (aVal * Math.PI) / 180;
                     result = (hVal - xVal) / Math.tan(aRad);
                     unit = "m";
                     formula = "Formula: D = (H - X) / tan(θ)";
-                } 
+                }
                 else if (mode === 'elev') {
-                    if (isNaN(aVal) || isNaN(hVal) || isNaN(dVal)) throw new Error();
+                    if (isNaN(aVal) || isNaN(hVal) || isNaN(dVal) || aVal >= 90) throw new Error();
                     const aRad = (aVal * Math.PI) / 180;
                     result = hVal - (dVal * Math.tan(aRad));
                     unit = "m";
@@ -4523,7 +4521,7 @@
                     formula = "Formula: θ = arctan((H - X) / D)";
                 }
                 else if (mode === 'h1') {
-                    if (isNaN(aVal) || isNaN(xVal) || isNaN(dVal)) throw new Error();
+                    if (isNaN(aVal) || isNaN(xVal) || isNaN(dVal) || aVal >= 90) throw new Error();
                     const aRad = (aVal * Math.PI) / 180;
                     result = xVal + (dVal * Math.tan(aRad));
                     unit = "m";
@@ -4581,7 +4579,7 @@
 
             table.innerHTML = "";
 
-            if(isNaN(aVal) || isNaN(xVal) || aVal <= 0) {
+            if(isNaN(aVal) || isNaN(xVal) || aVal <= 0 || aVal >= 90) {
                 return;
             }
 
@@ -4638,7 +4636,6 @@
             if (document.getElementById('theo-setup-x')) document.getElementById('theo-setup-x').value = "";
             if (document.getElementById('theo-setup-table')) document.getElementById('theo-setup-table').innerHTML = "";
             
-            console.log("Theodolite cleaned successfully.");
         }
 
 
