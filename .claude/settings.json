@@ -3,7 +3,8 @@
     "allow": [
       "PowerShell($bytes = [System.IO.File]::ReadAllBytes\\(\"e:\\\\OneDrive - AEROTHAI\\\\09.Pythonista\\\\.Projects\\\\FISB-Tools\\\\dist\\\\index.html\"\\) | Select-Object -First 10; $bytes | ForEach-Object { \"0x{0:X2}\" -f $_ })",
       "WebFetch(domain:api.github.com)",
-      "WebFetch(domain:6ff45ed1.fisbtools.pages.dev)"
+      "WebFetch(domain:6ff45ed1.fisbtools.pages.dev)",
+      "PowerShell($lines = [System.IO.File]::ReadAllLines\\(\"e:\\\\OneDrive - AEROTHAI\\\\09.Pythonista\\\\.Projects\\\\FISB-Tools\\\\dist\\\\index.html\"\\); $maxLen = \\($lines | Measure-Object -Property Length -Maximum\\).Maximum; $longLines = $lines | Where-Object { $_.Length -gt 5000 } | Measure-Object; Write-Host \"Max line length: $maxLen\"; Write-Host \"Lines over 5000 chars: $\\($longLines.Count\\)\")"
     ]
   }
 }
