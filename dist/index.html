@@ -8,7 +8,7 @@
     <meta name="description" content="A professional suite of aeronautical tools for AEROTHAI, including PAPI, VOR, ILS, and Gradient calculation modules optimized for flight inspection and site survey.">
     <meta name="theme-color" content="#0a0a12">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
-    <title>AEROTHAI_FISB tools_MAY 26</title>
+    <title>AEROTHAI_FISB tools_JUN 26</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -898,7 +898,7 @@
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
             </svg>
-            AEROTHAI_FISB tools_MAY 26
+            AEROTHAI_FISB tools_JUN 26
         </div>
         <nav class="nav-menu">
             <div class="nav-item active" onclick="switchTab('tab-gradient', this)">IFP Gradient</div>
@@ -1975,13 +1975,99 @@
                     </div>
 
                 </div>
+
+                <!-- DDM TO MICROAMPERE CONVERTER -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">DDM ↔ µA <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted); margin-left:8px;">Annex 10</span></h2>
+                        <button class="btn-mini danger" onclick="event.stopPropagation(); clearDDMConverter();" title="Clear All">CLEAR</button>
+                    </div>
+                    <div class="card-content">
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">
+                            Convert DDM (Difference in Depth of Modulation) to/from µA based on ICAO Annex 10.
+                        </div>
+
+                        <!-- LOCALIZER Section -->
+                        <div style="background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.15); border-radius:10px; padding:15px; margin-bottom:15px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="font-size:0.85rem; font-weight:700; color:var(--accent-primary);">📡 LOCALIZER</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">FSD: 0.155 DDM = 150 µA</div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:end;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">DDM</label>
+                                    <input type="number" inputmode="decimal" id="ddm-loc-ddm" placeholder="0.000" step="0.001" oninput="convertDDM('loc','ddm')" style="text-align:center;">
+                                </div>
+                                <div style="font-size:1rem; color:var(--text-muted); padding-bottom:14px;">↔</div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">µA</label>
+                                    <input type="number" inputmode="decimal" id="ddm-loc-ua" placeholder="0.0" step="0.1" oninput="convertDDM('loc','ua')" style="text-align:center;">
+                                </div>
+                            </div>
+                            <!-- LOC visual bar -->
+                            <div style="margin-top:12px; position:relative; height:24px; background:rgba(0,0,0,0.2); border-radius:12px; overflow:hidden; border:1px solid var(--border-light);">
+                                <div style="position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--accent-success); z-index:2;"></div>
+                                <div id="ddm-loc-bar" style="position:absolute; left:50%; top:2px; bottom:2px; width:0; background:var(--accent-primary); border-radius:10px; transition:all 0.2s ease; opacity:0.7;"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted); margin-top:4px;">
+                                <span>−150 µA</span>
+                                <span>0</span>
+                                <span>+150 µA</span>
+                            </div>
+                        </div>
+
+                        <!-- GLIDESLOPE Section -->
+                        <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.15); border-radius:10px; padding:15px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="font-size:0.85rem; font-weight:700; color:var(--accent-warning);">📐 GLIDESLOPE</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">FSD: 0.175 DDM = 150 µA</div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:end;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">DDM</label>
+                                    <input type="number" inputmode="decimal" id="ddm-gs-ddm" placeholder="0.000" step="0.001" oninput="convertDDM('gs','ddm')" style="text-align:center;">
+                                </div>
+                                <div style="font-size:1rem; color:var(--text-muted); padding-bottom:14px;">↔</div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">µA</label>
+                                    <input type="number" inputmode="decimal" id="ddm-gs-ua" placeholder="0.0" step="0.1" oninput="convertDDM('gs','ua')" style="text-align:center;">
+                                </div>
+                            </div>
+                            <!-- GS visual bar -->
+                            <div style="margin-top:12px; position:relative; height:24px; background:rgba(0,0,0,0.2); border-radius:12px; overflow:hidden; border:1px solid var(--border-light);">
+                                <div style="position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--accent-success); z-index:2;"></div>
+                                <div id="ddm-gs-bar" style="position:absolute; left:50%; top:2px; bottom:2px; width:0; background:var(--accent-warning); border-radius:10px; transition:all 0.2s ease; opacity:0.7;"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted); margin-top:4px;">
+                                <span>−150 µA</span>
+                                <span>0</span>
+                                <span>+150 µA</span>
+                            </div>
+                        </div>
+
+                        <!-- Annex 10 Reference -->
+                        <div style="margin-top:15px; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px;">
+                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">ICAO Annex 10 Reference</div>
+                            <table class="modern-table" style="font-size:0.8rem;">
+                                <thead>
+                                    <tr><th>Parameter</th><th style="text-align:center;">LOC</th><th style="text-align:center;">GS</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td style="color:var(--text-muted);">FSD DDM</td><td style="text-align:center;">0.155</td><td style="text-align:center;">0.175</td></tr>
+                                    <tr><td style="color:var(--text-muted);">FSD µA</td><td style="text-align:center;">150</td><td style="text-align:center;">150</td></tr>
+                                    <tr><td style="color:var(--text-muted);">Scale Factor</td><td style="text-align:center;">967.74 µA/DDM</td><td style="text-align:center;">857.14 µA/DDM</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <!-- MODULE: MISC TOOLS -->
         <div id="tab-misc" class="page-section hidden">
             <div class="page-header">
                 <h1 class="page-title">Converters & Utilities</h1>
-                <div class="page-subtitle">Fuel, Units, and Coordinates</div>
+                <div class="page-subtitle">Fuel, Units, Morse Code, and Coordinates</div>
             </div>
 
             <div class="grid-container">
@@ -2167,6 +2253,55 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- MORSE CODE DECODER -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">Morse Code Decoder <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted); margin-left:8px;">· / — → ABC</span></h2>
+                        <button class="btn-mini danger" onclick="event.stopPropagation(); clearMorseDecoder();" title="Clear All">CLEAR</button>
+                    </div>
+                    <div class="card-content">
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">
+                            Type <span style="color:var(--accent-primary); font-weight:700;">.</span> (dot) and <span style="color:var(--accent-primary); font-weight:700;">-</span> (dash) for each letter. Separate letters with <span style="color:var(--accent-warning); font-weight:700;">SPACE</span>. Separate words with <span style="color:var(--accent-warning); font-weight:700;">/</span> or double space.
+                        </div>
+                        <!-- Input area -->
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label" style="font-size:0.75rem;">Morse Input (dots & dashes)</label>
+                            <input type="text" id="morse-decode-input" placeholder="e.g. .- -... -.-." style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; letter-spacing:3px; padding:14px 15px;" oninput="decodeMorseInput()" autocomplete="off" autocorrect="off" spellcheck="false">
+                        </div>
+                        <!-- Decoded output -->
+                        <div style="background:rgba(0,0,0,0.25); border-radius:10px; padding:15px; margin-bottom:15px; border:1px solid rgba(59,130,246,0.15);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Decoded Text</span>
+                                <button class="btn-mini" onclick="copyMorseResult()" style="font-size:0.65rem; padding:2px 8px;">COPY</button>
+                            </div>
+                            <div id="morse-decode-output" style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:var(--accent-primary); min-height:40px; letter-spacing:4px; word-break:break-all; text-shadow: 0 0 8px rgba(59,130,246,0.3);">
+                                —
+                            </div>
+                        </div>
+                        <!-- Per-letter breakdown -->
+                        <div id="morse-breakdown" style="display:flex; flex-wrap:wrap; gap:6px; min-height:28px;"></div>
+
+                        <!-- Divider -->
+                        <div style="height:1px; background:var(--border-light); margin:18px 0;"></div>
+
+                        <!-- Reverse: Text to Morse -->
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label" style="font-size:0.75rem;">Encode: Text → Morse</label>
+                            <input type="text" id="morse-encode-input" placeholder="e.g. ABC" style="font-size:1rem; padding:12px 15px; text-transform:uppercase;" oninput="encodeMorseInput()" autocomplete="off">
+                        </div>
+                        <div id="morse-encode-output" style="font-family:'JetBrains Mono', monospace; font-size:1.2rem; font-weight:700; color:var(--accent-cyan); min-height:30px; letter-spacing:3px; word-break:break-all; padding:10px; background:rgba(0,0,0,0.15); border-radius:8px;">
+                            —
+                        </div>
+
+                        <!-- Reference Table (collapsed) -->
+                        <details style="margin-top:15px;" ontoggle="if(this.open) buildMorseRefTable();">
+                            <summary style="cursor:pointer; font-size:0.8rem; color:var(--text-muted); font-weight:600; user-select:none;">📖 Morse Code Reference</summary>
+                            <div id="morse-ref-table" style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:4px; font-family:'JetBrains Mono', monospace; font-size:0.75rem;"></div>
+                        </details>
+                    </div>
+                </div>
+
             </div>
         </div>
         </div>
@@ -5088,6 +5223,171 @@
             }
         }
 
+        // --- MORSE CODE DECODER MODULE ---
+        // Build reverse lookup: morse pattern -> character
+        const MORSE_REVERSE = {};
+        for (const [char, code] of Object.entries(MORSE_CODE)) {
+            MORSE_REVERSE[code] = char;
+        }
+
+        function decodeMorseInput() {
+            const input = document.getElementById('morse-decode-input').value;
+            const outputEl = document.getElementById('morse-decode-output');
+            const breakdownEl = document.getElementById('morse-breakdown');
+
+            if (!input.trim()) {
+                outputEl.textContent = '—';
+                breakdownEl.innerHTML = '';
+                return;
+            }
+
+            // Split by / or double-space for word boundaries, then by single space for letters
+            const words = input.trim().split(/\s*\/\s*|\s{2,}/);
+            let decoded = '';
+            let breakdownHTML = '';
+
+            words.forEach((word, wIdx) => {
+                if (wIdx > 0) {
+                    decoded += ' ';
+                    breakdownHTML += '<div style="width:12px;"></div>';
+                }
+                const letters = word.trim().split(/\s+/);
+                letters.forEach(code => {
+                    if (!code) return;
+                    const char = MORSE_REVERSE[code];
+                    if (char) {
+                        decoded += char;
+                        breakdownHTML += `<div style="display:flex; flex-direction:column; align-items:center; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); border-radius:6px; padding:4px 6px; min-width:32px;">`;
+                        breakdownHTML += `<span style="font-size:0.65rem; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">${code}</span>`;
+                        breakdownHTML += `<span style="font-size:0.95rem; font-weight:700; color:var(--accent-primary);">${char}</span>`;
+                        breakdownHTML += `</div>`;
+                    } else {
+                        decoded += '?';
+                        breakdownHTML += `<div style="display:flex; flex-direction:column; align-items:center; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); border-radius:6px; padding:4px 6px; min-width:32px;">`;
+                        breakdownHTML += `<span style="font-size:0.65rem; color:var(--accent-danger); font-family:'JetBrains Mono',monospace;">${code}</span>`;
+                        breakdownHTML += `<span style="font-size:0.95rem; font-weight:700; color:var(--accent-danger);">?</span>`;
+                        breakdownHTML += `</div>`;
+                    }
+                });
+            });
+
+            outputEl.textContent = decoded || '—';
+            breakdownEl.innerHTML = breakdownHTML;
+        }
+
+        function encodeMorseInput() {
+            const input = document.getElementById('morse-encode-input').value.toUpperCase();
+            const outputEl = document.getElementById('morse-encode-output');
+
+            if (!input.trim()) {
+                outputEl.textContent = '—';
+                return;
+            }
+
+            let morse = '';
+            for (let i = 0; i < input.length; i++) {
+                const char = input[i];
+                if (char === ' ') {
+                    morse += ' / ';
+                } else if (MORSE_CODE[char]) {
+                    morse += MORSE_CODE[char] + '  ';
+                }
+            }
+            outputEl.textContent = morse.trim() || '—';
+        }
+
+        function clearMorseDecoder() {
+            document.getElementById('morse-decode-input').value = '';
+            document.getElementById('morse-decode-output').textContent = '—';
+            document.getElementById('morse-breakdown').innerHTML = '';
+            document.getElementById('morse-encode-input').value = '';
+            document.getElementById('morse-encode-output').textContent = '—';
+        }
+
+        function copyMorseResult() {
+            const text = document.getElementById('morse-decode-output').textContent;
+            if (text && text !== '—') {
+                navigator.clipboard.writeText(text).then(() => {
+                    // Brief visual feedback
+                    const btn = event.target;
+                    const orig = btn.textContent;
+                    btn.textContent = '✓';
+                    btn.style.color = 'var(--accent-success)';
+                    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 800);
+                });
+            }
+        }
+
+        // Build morse reference table on load
+        function buildMorseRefTable() {
+            const container = document.getElementById('morse-ref-table');
+            if (!container) return;
+            let html = '';
+            for (const [char, code] of Object.entries(MORSE_CODE)) {
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:3px 6px; background:rgba(255,255,255,0.03); border-radius:4px; border:1px solid var(--border-light);">`;
+                html += `<span style="font-weight:700; color:var(--text-main);">${char}</span>`;
+                html += `<span style="color:var(--accent-cyan); font-size:0.8rem;">${code}</span>`;
+                html += `</div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // --- DDM TO MICROAMPERE CONVERTER MODULE ---
+        // ICAO Annex 10: LOC FSD = 0.155 DDM = 150 µA; GS FSD = 0.175 DDM = 150 µA
+        const DDM_CONFIG = {
+            loc: { fsdDDM: 0.155, fsdUA: 150 },  // scale = 150/0.155 = 967.742 µA/DDM
+            gs:  { fsdDDM: 0.175, fsdUA: 150 }   // scale = 150/0.175 = 857.143 µA/DDM
+        };
+
+        function convertDDM(type, src) {
+            const cfg = DDM_CONFIG[type];
+            const scale = cfg.fsdUA / cfg.fsdDDM;
+            const ddmEl = document.getElementById(`ddm-${type}-ddm`);
+            const uaEl = document.getElementById(`ddm-${type}-ua`);
+            const barEl = document.getElementById(`ddm-${type}-bar`);
+
+            let uaVal = 0;
+
+            if (src === 'ddm') {
+                const ddm = parseFloat(ddmEl.value);
+                if (isNaN(ddm)) { uaEl.value = ''; updateDDMBar(barEl, 0); return; }
+                uaVal = ddm * scale;
+                uaEl.value = parseFloat(uaVal.toFixed(2));
+            } else {
+                const ua = parseFloat(uaEl.value);
+                if (isNaN(ua)) { ddmEl.value = ''; updateDDMBar(barEl, 0); return; }
+                uaVal = ua;
+                const ddm = ua / scale;
+                ddmEl.value = parseFloat(ddm.toFixed(4));
+            }
+
+            updateDDMBar(barEl, uaVal);
+        }
+
+        function updateDDMBar(barEl, uaVal) {
+            // Map -150..+150 µA to bar position
+            const pct = Math.min(Math.max(uaVal / 150, -1), 1); // clamp to -1..+1
+            const absPct = Math.abs(pct) * 50; // max 50% width
+
+            if (pct >= 0) {
+                barEl.style.left = '50%';
+                barEl.style.right = 'auto';
+                barEl.style.width = absPct + '%';
+            } else {
+                barEl.style.left = (50 - absPct) + '%';
+                barEl.style.right = 'auto';
+                barEl.style.width = absPct + '%';
+            }
+        }
+
+        function clearDDMConverter() {
+            ['ddm-loc-ddm','ddm-loc-ua','ddm-gs-ddm','ddm-gs-ua'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            updateDDMBar(document.getElementById('ddm-loc-bar'), 0);
+            updateDDMBar(document.getElementById('ddm-gs-bar'), 0);
+        }
+
         // --- COORDINATE CONVERTER MODULE ---
         const COORD_ROW_COUNT = 24; // Increased for grid view
 
@@ -5332,6 +5632,7 @@
             if (typeof calcILS === 'function') calcILS();
             if (typeof drawFltCk === 'function') drawFltCk();
             if (typeof initVertProfile === 'function') initVertProfile();
+            if (typeof buildMorseRefTable === 'function') buildMorseRefTable();
         }
 
         // --- CSV EXPORT/IMPORT (ForeFlight Format) ---
