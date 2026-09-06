@@ -1,0 +1,1833 @@
+﻿<!DOCTYPE html>
+<!-- FISB-Tools v1.1 -->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="A professional suite of aeronautical tools for AEROTHAI, including PAPI, VOR, ILS, and Gradient calculation modules optimized for flight inspection and site survey.">
+    <meta name="theme-color" content="#0a0a12">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
+    <title>AEROTHAI_FISB tools_JUN 26</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/gradient.css">
+    <link rel="stylesheet" href="css/papi.css">
+    <link rel="stylesheet" href="css/theodolite.css">
+    <link rel="stylesheet" href="css/vor.css">
+    <link rel="stylesheet" href="css/ils.css">
+    <link rel="stylesheet" href="css/misc.css">
+    <link rel="stylesheet" href="css/coord.css">
+    <link rel="stylesheet" href="css/projector.css">
+    <link rel="stylesheet" href="css/rfarc.css">
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <aside>
+        <div class="sidebar-brand">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+            AEROTHAI_FISB tools_JUN 26
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-item active" onclick="switchTab('tab-gradient', this)">IFP Gradient</div>
+            <div class="nav-item" onclick="switchTab('tab-papi', this)">PAPI Config</div>
+            <div class="nav-item" onclick="switchTab('tab-vor', this)">VOR Tools</div>
+            <div class="nav-item" onclick="switchTab('tab-ils', this)">ILS Analysis</div>
+            <div class="nav-item" onclick="switchTab('tab-theodolite', this)">Theodolite</div>
+            <div class="nav-item" onclick="switchTab('tab-coord', this)">Coordinates</div>
+            <div class="nav-item" onclick="switchTab('tab-projector', this)">Waypoint Projector</div>
+            <div class="nav-item" onclick="switchTab('tab-rfarc', this)">RF Arc</div>
+            <div class="nav-item" onclick="switchTab('tab-misc', this)">Converters</div>
+        </nav>
+        <div
+            style="position:absolute; bottom:15px; left:0; right:0; text-align:center; font-size:0.65rem; color:rgba(148,163,184,0.4); letter-spacing:0.5px;">
+            © AEROTHAI–Capt.Prach
+        </div>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main>
+
+        <!-- MODULE: IFP GRADIENT -->
+        <div id="tab-gradient" class="page-section">
+            <div class="page-header">
+                <h1 class="page-title">IFP Gradient</h1>
+                <div class="page-subtitle">Calculate climb/descent gradients and angles</div>
+            </div>
+
+            <!-- RWY & TCH Setup -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header no-minimize">
+                    <h2 class="card-title">Initial Parameters</h2>
+                    <button class="btn-mini" onclick="calcGradStart()">Set Leg 1 Start</button>
+                </div>
+                <div style="display: flex; gap: 15px; padding: 10px; flex-wrap: wrap; align-items: flex-end;">
+                    <div class="vp-input-group">
+                        <label>RWY Elev (ft)</label>
+                        <input type="number" inputmode="decimal" id="grad-rwy-elev" placeholder="e.g. 100"
+                            oninput="calcGradStart()">
+                    </div>
+                    <div class="vp-input-group">
+                        <label>TCH (ft)</label>
+                        <input type="number" inputmode="decimal" id="grad-tch" value="50" oninput="calcGradStart()">
+                    </div>
+                    <div class="vp-input-group" style="flex: 0 0 auto;">
+                        <label>Approach Offset</label>
+                        <button class="btn-mini"
+                            style="height: 32px; width: 70px; font-weight: 700; color: var(--accent-warning); border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.05);"
+                            onclick="calcGradStart(-100)"
+                            title="Subtract 100ft from Threshold Crossing Height (Simulation)">
+                            -100
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-container" id="grad-legs-container">
+                <!-- LEG 1 -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <div class="card-title">Leg 1 <span id="grad-header-info"
+                                style="font-size:0.9rem; font-weight:400; color:var(--text-muted); margin-left:10px;"></span>
+                        </div>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearIds('grad-startAlt','grad-endAlt','grad-dist','grad-sdist','grad-edist','grad-angle-in','grad-pct-in', 'grad');">RESET</button>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Row 1: Altitudes & Angle/Gradient -->
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <div class="vp-input-group">
+                                <label>Start Altitude (ft)</label>
+                                <input type="number" inputmode="decimal" id="grad-startAlt" placeholder="e.g. 2000"
+                                    oninput="calculateGradient('grad', 'sAlt')">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>End Altitude (ft)</label>
+                                <input type="number" inputmode="decimal" id="grad-endAlt" placeholder="e.g. 5000"
+                                    oninput="calculateGradient('grad', 'eAlt')">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>Gradient (%) [Optional]</label>
+                                <input type="number" inputmode="decimal" id="grad-pct-in" placeholder="Calc"
+                                    onchange="calculateGradient('grad', 'pct')" step="0.01"
+                                    style="border-color: var(--accent-cyan);">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>Angle (°) [Optional]</label>
+                                <input type="number" inputmode="decimal" id="grad-angle-in" placeholder="Calc"
+                                    onchange="calculateGradient('grad', 'angle')"
+                                    style="border-color: var(--accent-cyan);">
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Distances -->
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <div class="vp-input-group">
+                                <label>Leg Dist (NM)</label>
+                                <input type="number" inputmode="decimal" id="grad-dist" placeholder="e.g. 5.0"
+                                    onchange="calculateGradient('grad', 'dist')">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>Start Dist (NM)</label>
+                                <input type="number" inputmode="decimal" id="grad-sdist" placeholder="--"
+                                    onchange="calculateGradient('grad', 'sDist')">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>End Dist (NM)</label>
+                                <input type="number" inputmode="decimal" id="grad-edist" placeholder="--"
+                                    onchange="calculateGradient('grad', 'eDist')">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="results-panel">
+                        <div class="result-row"><span class="result-label">Status</span><span id="grad-type"
+                                class="result-value">---</span></div>
+                        <div class="result-row"><span class="result-label">Alt Change</span><span id="grad-delta"
+                                class="result-value">0 ft</span></div>
+                        <div style="height:1px; background:rgba(255,255,255,0.1); margin:10px 0;"></div>
+                        <div class="result-row"><span class="result-label">Gradient (ft/NM)</span><span id="grad-ftnm"
+                                class="result-value res-accent">0</span></div>
+                        <div class="result-row"><span class="result-label">Gradient (%)</span><span id="grad-percent"
+                                class="result-value res-accent">0.0%</span></div>
+                        <div class="result-row"><span class="result-label">Angle (°)</span><span id="grad-angle"
+                                class="result-value res-accent">0.00°</span></div>
+                    </div>
+                    <canvas id="gradCanvas"></canvas>
+                </div>
+
+
+            </div>
+            <div style="text-align:center; margin-top:20px;">
+                <button class="btn-add-leg" onclick="addGradientLeg()">
+                    <span style="font-size:1.2rem;">+</span> Add Another Leg
+                </button>
+            </div>
+        </div>
+
+        <!-- MODULE: PAPI CONFIG -->
+        <div id="tab-papi" class="page-section hidden">
+            <div class="page-header">
+                <h1 class="page-title">PAPI Configuration</h1>
+                <div class="page-subtitle">Configure Standard and ILS-Associated PAPI angles</div>
+            </div>
+
+            <div class="papi-mode-selector">
+                <button id="btn-papi-std" class="papi-mode-btn active" onclick="setPapiMode('std')">PAPI</button>
+                <button id="btn-papi-ils" class="papi-mode-btn" onclick="setPapiMode('ils')">PAPI with ILS</button>
+            </div>
+
+            <div id="papi-std-container" class="grid-container">
+                <!-- Dynamic cards added here -->
+            </div>
+
+            <div id="papi-ils-container" class="grid-container hidden">
+                <!-- Dynamic cards added here -->
+            </div>
+
+            <!-- ANGLE CONVERTER CARD -->
+            <div class="card" style="margin-top:25px;">
+                <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                    <h2 class="card-title">Angle Converter <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted); margin-left:8px;">Decimal ↔ Deg° Min'</span></h2>
+                    <button class="btn-mini danger" onclick="event.stopPropagation(); [1,2,3,4].forEach(r => clearAngRow(r));" title="Clear All Rows">CLEAR</button>
+                </div>
+                <div class="card-content">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <!-- Column Headers -->
+                        <div style="display:flex; gap:8px; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border-light);">
+                            <div style="width:22px;"></div>
+                            <div style="flex:1; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; text-align:center; letter-spacing:0.05em;">Decimal (°)</div>
+                            <div style="width:22px;"></div>
+                            <div style="flex:0.8; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; text-align:center; letter-spacing:0.05em;">Deg</div>
+                            <div style="flex:1.2; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; text-align:center; letter-spacing:0.05em;">Min'</div>
+                            <div style="width:36px;"></div>
+                        </div>
+                        <!-- Row 1 -->
+                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
+                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">1</div>
+                            <input type="text" inputmode="decimal" id="ang-dec-1" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-dec-2'); convertAngDecToDM(1)">
+                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
+                            <input type="text" inputmode="numeric" id="ang-d-1" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-1'); convertAngDMToDec(1)">
+                            <input type="text" inputmode="numeric" id="ang-m-1" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-d-2'); convertAngDMToDec(1)">
+                            <button class="btn-mini danger" onclick="clearAngRow(1)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
+                        </div>
+                        <!-- Row 2 -->
+                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
+                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">2</div>
+                            <input type="text" inputmode="decimal" id="ang-dec-2" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-dec-3'); convertAngDecToDM(2)">
+                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
+                            <input type="text" inputmode="numeric" id="ang-d-2" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-2'); convertAngDMToDec(2)">
+                            <input type="text" inputmode="numeric" id="ang-m-2" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-d-3'); convertAngDMToDec(2)">
+                            <button class="btn-mini danger" onclick="clearAngRow(2)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
+                        </div>
+                        <!-- Row 3 -->
+                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
+                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">3</div>
+                            <input type="text" inputmode="decimal" id="ang-dec-3" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-dec-4'); convertAngDecToDM(3)">
+                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
+                            <input type="text" inputmode="numeric" id="ang-d-3" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-3'); convertAngDMToDec(3)">
+                            <input type="text" inputmode="numeric" id="ang-m-3" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 5, 'ang-d-4'); convertAngDMToDec(3)">
+                            <button class="btn-mini danger" onclick="clearAngRow(3)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
+                        </div>
+                        <!-- Row 4 -->
+                        <div class="angle-row-gap" style="display:flex; gap:8px; align-items:center;">
+                            <div style="width:18px; font-size:0.72rem; font-weight:700; color:var(--text-muted); text-align:center;">4</div>
+                            <input type="text" inputmode="decimal" id="ang-dec-4" placeholder="3.50" maxlength="5" class="vp-input angle-row-input" style="flex:1.3; text-align:center; background:rgba(0,0,0,0.2); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="convertAngDecToDM(4)">
+                            <div style="width:15px; text-align:center; color:var(--text-muted); font-size:0.8rem;">↔</div>
+                            <input type="text" inputmode="numeric" id="ang-d-4" placeholder="D" maxlength="2" class="vp-input angle-row-input" style="flex:0.7; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="autoTab(this, 2, 'ang-m-4'); convertAngDMToDec(4)">
+                            <input type="text" inputmode="numeric" id="ang-m-4" placeholder="Min" maxlength="5" class="vp-input angle-row-input" style="flex:1.2; text-align:center; background:rgba(255,255,255,0.05); border:1px solid var(--border-light); color:var(--text-main); height:32px;" oninput="convertAngDMToDec(4)">
+                            <button class="btn-mini danger" onclick="clearAngRow(4)" style="height:32px; width:30px; padding:0; flex-shrink:0;" title="Clear">&times;</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REF CARD -->
+            <div class="card" style="margin-top:25px;">
+                <div class="card-header minimizable minimized-header" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                    <h2 class="card-title">Box Reference Guide</h2>
+                </div>
+                
+                <div class="card-content" style="display: none;">
+                    <div id="papi-visuals" style="margin-bottom: 20px;">
+                        <!-- Diagrams moved here -->
+                        <div id="papi1-diagram-container">
+                            <canvas id="papi1Canvas" style="height:300px; width:100%;"></canvas>
+                        </div>
+                        <div id="papi2-diagram-container" class="hidden">
+                            <canvas id="papi2Canvas" style="height:300px; width:100%;"></canvas>
+                        </div>
+                    </div>
+
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>AEROTHAI</th>
+                                <th>ICAO</th>
+                                <th>FAA</th>
+                                <th>Position</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Box 1</td>
+                                <td>A</td>
+                                <td>#4</td>
+                                <td>AWAY RWY - Lowest Angle</td>
+                            </tr>
+                            <tr>
+                                <td>Box 2</td>
+                                <td>B</td>
+                                <td>#3</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Box 3</td>
+                                <td>C</td>
+                                <td>#2</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Box 4</td>
+                                <td>D</td>
+                                <td>#1</td>
+                                <td>CLOSE RWY - Highest Angle</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE: THEODOLITE MODULE -->
+        <div id="tab-theodolite" class="page-section hidden">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Theodolite Calculation</h1>
+                    <div class="page-subtitle">PAPI Calibration & Setup Optimization</div>
+                </div>
+            </div>
+
+            <div class="theo-mode-selector">
+                <button id="btn-theo-gen" class="theo-mode-btn active" onclick="setTheoMode('gen')">General Calculation</button>
+                <button id="btn-theo-setup" class="theo-mode-btn" onclick="setTheoMode('setup')">Setup Point (High H Effect)</button>
+            </div>
+
+            <!-- TAB 1: GENERAL CALCULATION -->
+            <div id="theo-gen-container">
+                <div class="card">
+                    <div class="card-header no-minimize">
+                        <div style="display:flex; align-items:center; gap:15px; width:100%;">
+                            <h2 class="card-title" style="flex-shrink:0;">Find Unknown</h2>
+                            <select id="theo-mode" class="vp-input" style="max-width:200px; height:36px; padding:0 10px;" onchange="updateTheoUI(); calculateTheodolite();">
+                                <option value="dist">Distance (D)</option>
+                                <option value="elev">PAPI Lens Height (X)</option>
+                                <option value="angle">Path Angle (θ)</option>
+                                <option value="h1">Theodolite Height (H)</option>
+                            </select>
+                            <button class="btn-mini" style="margin-left:auto; background:rgba(255,255,255,0.05);" onclick="clearTheodolite()">RESET</button>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="grid-container" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
+                            <!-- Input Panel -->
+                            <div style="display:flex; flex-direction:column; gap:15px;">
+                                <div id="grp-theo-angle" class="form-group">
+                                    <label class="form-label" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Path Angle (θ) °</label>
+                                    <input type="number" step="0.001" inputmode="decimal" id="theo-angle" placeholder="3.000" oninput="calculateTheodolite()">
+                                </div>
+                                <div id="grp-theo-h1" class="form-group">
+                                    <label class="form-label" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Theodolite Hgt (H) m</label>
+                                    <input type="number" step="0.01" inputmode="decimal" id="theo-h1" placeholder="1.50" oninput="calculateTheodolite()">
+                                </div>
+                                <div id="grp-theo-x" class="form-group">
+                                    <label class="form-label" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">PAPI Box Hgt (X) m</label>
+                                    <input type="number" step="0.01" inputmode="decimal" id="theo-x" placeholder="0.50" oninput="calculateTheodolite()">
+                                </div>
+                                <div id="grp-theo-d1" class="form-group">
+                                    <label class="form-label" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:4px;">Distance (D) m</label>
+                                    <input type="number" step="0.1" inputmode="decimal" id="theo-d1" placeholder="m" oninput="calculateTheodolite()">
+                                </div>
+                            </div>
+
+                            <!-- Results Panel -->
+                            <div class="results-panel" style="margin-top:0; display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:200px; background:rgba(59, 130, 246, 0.05); border:1px solid rgba(59, 130, 246, 0.1);">
+                                <div id="theo-res-label" style="font-size:0.85rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; margin-bottom:10px;">
+                                    Calculated Value
+                                </div>
+                                <div style="display:flex; align-items:baseline; gap:5px;">
+                                    <span id="theo-res-val" style="font-size:3.5rem; font-weight:900; color:white; letter-spacing:-1px;">--</span>
+                                    <span id="theo-res-unit" style="font-size:1.2rem; font-weight:700; color:var(--accent-primary);">m</span>
+                                </div>
+                                <div id="theo-formula" style="margin-top:15px; font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:var(--accent-cyan); opacity:0.7;">
+                                    Formula: --
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: SETUP POINT OPTIMIZER -->
+            <div id="theo-setup-container" class="hidden">
+                <div class="card">
+                    <div class="card-header no-minimize">
+                        <div style="display:flex; align-items:center; gap:15px; width:100%;">
+                            <h2 class="card-title">Setup Optimizer</h2>
+                            <button class="btn-mini" style="margin-left:auto; color:var(--accent-cyan); border-color:var(--accent-cyan);" onclick="syncTheoFromGen()">Link from General</button>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:25px;">
+                            <!-- Settings -->
+                            <div style="background:rgba(0,0,0,0.1); padding:20px; border-radius:12px; border:1px solid var(--border-light);">
+                                <h3 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:15px;">Site Conditions</h3>
+                                <div class="form-group">
+                                    <label class="form-label" style="font-size:0.75rem;">Angle (θ) °</label>
+                                    <input type="number" step="0.001" id="theo-setup-angle" placeholder="3.000" oninput="calculateTheoSetup()">
+                                </div>
+                                <div class="form-group" style="margin-top:15px;">
+                                    <label class="form-label" style="font-size:0.75rem;">PAPI Hgt (X) m</label>
+                                    <input type="number" step="0.01" id="theo-setup-x" placeholder="0.50" oninput="calculateTheoSetup()">
+                                </div>
+                            </div>
+
+                            <!-- Variation Table -->
+                            <div>
+                                <h3 style="font-size:0.85rem; color:var(--text-muted); text-transform:uppercase; margin-bottom:15px;">Required Distance (D) by Engineer Height</h3>
+                                <table class="modern-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Engineer Height (H)</th>
+                                            <th style="text-align:right;">Distance (D)</th>
+                                            <th style="text-align:right;">Diff (vs 1.5m)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="theo-setup-table">
+                                        <!-- Rows injected by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE: VOR TOOLS -->
+        <div id="tab-vor" class="page-section hidden">
+            <div class="page-header">
+                <h1 class="page-title">VOR Tools</h1>
+                <div class="page-subtitle">Orbit Calculation & Coverage Analysis</div>
+            </div>
+
+            <div class="grid-container">
+                <!-- VOR ORBIT -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title" style="white-space:nowrap;">Orbit Cal</h2>
+                        <div id="vor-header-info"
+                            style="flex:1; text-align:center; font-size:0.85rem; color:var(--accent-cyan); font-weight:500; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        </div>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearIds('vor-id','vor-dist','vor-speed','vor-startRad','vor-targetRad','vor-startTime','vor-predMin'); calculateVOR(); calcVorTime();">RESET</button>
+                    </div>
+
+                    <div class="card-content">
+                        <!-- Restored: Row 1 Inputs -->
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:15px;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label" style="font-size:0.8rem;">VOR Ident</label>
+                                <input type="text" id="vor-id" maxlength="3" class="input-uppercase"
+                                    style="padding:8px;"
+                                    oninput="this.value=this.value.toUpperCase(); autoTab(this, 3, 'vor-dist'); updateVorMorse(this.value)">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label" style="font-size:0.8rem;">Orbit Dist (NM)</label>
+                                <input type="number" inputmode="decimal" id="vor-dist" style="padding:8px;"
+                                    oninput="if(this.value.length>2) this.value=this.value.slice(0,2); autoTab(this, 2, 'vor-speed'); calculateVOR()">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label" style="font-size:0.8rem;">Gnd Speed (Kts)</label>
+                                <input type="number" inputmode="numeric" id="vor-speed" value="160" step="10"
+                                    style="padding:8px;"
+                                    oninput="if(this.value.length>3) this.value=this.value.slice(0,3); autoTab(this, 3, 'vor-startRad'); calculateVOR()">
+                            </div>
+                        </div>
+
+                        <!-- Improved Layout: Row 3 (2 columns) -->
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:20px;">
+                            <!-- Start Radial -->
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label" style="color:var(--accent-cyan); font-size:0.8rem;">Start
+                                    Radial</label>
+                                <input type="number" inputmode="decimal" id="vor-startRad" style="padding:8px;"
+                                    oninput="if(this.value.length>3) this.value=this.value.slice(0,3); validateDeg360(this); autoTab(this, 3, 'vor-targetRad'); calculateVOR()">
+                            </div>
+
+                            <!-- Final Course -->
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label" style="font-size:0.8rem;">Final Crs°</label>
+                                <input type="number" inputmode="decimal" id="vor-targetRad" style="padding:8px;"
+                                    oninput="if(this.value.length>3) this.value=this.value.slice(0,3); validateDeg360(this); calculateVOR()">
+                            </div>
+                        </div>
+
+                        <!-- NEW ORDER: Settings Bar moved here -->
+                        <div
+                            style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+
+                            <!-- Direction Group -->
+                            <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+                                <label class="form-label"
+                                    style="margin:0; font-size:0.75rem; color:var(--text-muted); width:100%; text-align:center;">Direction</label>
+                                <div class="dir-selector">
+                                    <div id="dir-cw" class="dir-btn active cw" onclick="setVorDir('cw')">
+                                        <span>🔄</span> CW
+                                    </div>
+                                    <div id="dir-ccw" class="dir-btn" onclick="setVorDir('ccw')">
+                                        <span>↩️</span> CCW
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Start Time Group -->
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <label class="form-label"
+                                    style="margin:0; font-size:0.75rem; color:var(--text-muted);">Start(UTC)</label>
+                                <input type="text" inputmode="numeric" id="vor-startTime" placeholder="HH:MM"
+                                    maxlength="5"
+                                    style="width:60px; text-align:center; padding:6px; background:var(--bg-dark); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px;"
+                                    oninput="formatTimeInput(this)">
+                                <button class="btn-mini"
+                                    style="font-weight:600; color:var(--accent-success); border:1px solid var(--accent-success); padding:4px 8px; font-size:0.7rem;"
+                                    onclick="calcVorTime()">Update</button>
+                            </div>
+
+                            <!-- Morse Group -->
+                            <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
+                                <label class="form-label"
+                                    style="margin:0; font-size:0.75rem; color:var(--text-muted);">Morse</label>
+                                <div id="vor-morse"
+                                    style="font-family:'Courier New', monospace; font-weight:900; color:var(--accent-primary); font-size:1.2rem; letter-spacing:2px; -webkit-text-stroke: 1px var(--accent-primary);">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="results-panel">
+                        <div class="result-row"><span class="result-label">Full Orbit Dist</span><span
+                                id="vor-total-dist" class="result-value">-- NM</span></div>
+                        <div class="result-row"><span class="result-label">Full Orbit Time (Min)</span><span
+                                id="vor-total-time" class="result-value">--:--</span></div>
+                        <div class="result-row"><span class="result-label" style="color:var(--accent-warning);">Full
+                                Orbit Complete at</span><span id="vor-full-orbit-eta" class="result-value"
+                                style="color:var(--accent-warning);">--:-- UTC</span></div>
+                        <hr style="border:0; border-top:1px solid var(--border-light); margin:10px 0;">
+                        <div class="result-row"><span class="result-label" style="color:var(--accent-cyan);">Cross Final
+                                Crs Dist</span><span id="vor-dist-target" class="result-value"
+                                style="color:var(--accent-cyan);">-- NM</span></div>
+                        <div class="result-row"><span class="result-label" style="color:var(--accent-cyan);">Cross Final
+                                Crs Time (Min)</span><span id="vor-time-target" class="result-value"
+                                style="color:var(--accent-cyan);">--:--</span></div>
+                        <div class="result-row"><span class="result-label" style="color:var(--accent-cyan);">Cross Final
+                                Crs at</span><span id="vor-finishTime" class="result-value"
+                                style="color:var(--accent-cyan);">--:-- UTC</span></div>
+                        <canvas id="vorVizCanvas" style="height:50px; width:100%; margin-top:10px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PREDICTION -->
+            <div class="card">
+                <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                    <h2 class="card-title">Prediction</h2>
+                    <div id="pred-header-info"
+                        style="flex:1; text-align:center; font-size:0.85rem; color:var(--accent-cyan); font-weight:500; padding:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    </div>
+                    <button class="btn-mini danger"
+                        onclick="event.stopPropagation(); clearIds('pred-startTime','pred-startRad','pred-targetRad','pred-activeMin'); updatePrediction();">RESET</button>
+                </div>
+
+                <div class="card-content">
+                    <!-- Initial Values Row -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:15px;">
+                        <!-- Start Radial Group -->
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Start Radial</label>
+                            <input type="text" inputmode="numeric" id="pred-startRad" placeholder="090" maxlength="3"
+                                style="width:100%; padding:8px; background:var(--bg-dark); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px;"
+                                oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,3); if(parseInt(this.value)>360)this.value='360'; if(this.value.length===3)document.getElementById('pred-orbitDist').focus();">
+                        </div>
+
+                        <!-- Orbit Dist Group -->
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Orbit(NM)</label>
+                            <input type="number" inputmode="numeric" id="pred-orbitDist" placeholder="15" min="0"
+                                style="width:100%; padding:8px; background:var(--bg-dark); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px;"
+                                oninput="if(this.value<0)this.value=0; calcTimeToRadial(); calcRadialFromTime();">
+                        </div>
+
+                        <!-- Gnd Speed Group -->
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Gnd Speed (Kts)</label>
+                            <input type="number" inputmode="numeric" id="pred-speed" value="160" min="0" step="10"
+                                style="width:100%; padding:8px; background:var(--bg-dark); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px;"
+                                oninput="if(this.value<0)this.value=0; calcTimeToRadial(); calcRadialFromTime();">
+                        </div>
+                    </div>
+
+                    <!-- NEW ORDER: Prediction Settings Bar moved here -->
+                    <div
+                        style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+
+                        <!-- Direction Group -->
+                        <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+                            <label class="form-label"
+                                style="margin:0; font-size:0.75rem; color:var(--text-muted); width:100%; text-align:center;">Direction</label>
+                            <div class="dir-selector">
+                                <div id="pred-dir-cw" class="dir-btn active cw" onclick="setPredDir('cw')">
+                                    <span>🔄</span> CW
+                                </div>
+                                <div id="pred-dir-ccw" class="dir-btn" onclick="setPredDir('ccw')">
+                                    <span>↩️</span> CCW
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Start Time Group -->
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label class="form-label"
+                                style="margin:0; font-size:0.75rem; color:var(--text-muted);">Start(UTC)</label>
+                            <input type="text" inputmode="numeric" id="pred-startTime" placeholder="HH:MM" maxlength="5"
+                                style="width:60px; text-align:center; padding:6px; background:var(--bg-dark); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px;"
+                                oninput="formatTimeInput(this)">
+                            <button class="btn-mini"
+                                style="font-weight:600; color:var(--accent-success); border:1px solid var(--accent-success); padding:4px 8px; font-size:0.7rem;"
+                                onclick="calcTimeToRadial(); calcRadialFromTime();">Update</button>
+                        </div>
+                        
+                        <!-- Sync Button -->
+                        <button class="btn-mini"
+                            style="font-weight:600; color:var(--accent-primary); border:1px solid var(--accent-primary); padding:4px 8px; font-size:0.7rem; margin-left:auto;"
+                            onclick="syncPredFromOrbitCal();" title="Sync from Orbit Cal">Sync</button>
+                    </div>
+
+                    <!-- Two Calculation Modes -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+
+                        <!-- Mode 1: Target Radial → Time -->
+                        <div class="results-panel" style="padding:12px;">
+                            <div
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">
+                                Input Radial → Get Time
+                            </div>
+                            <div class="form-group" style="margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <label class="form-label" style="font-size:0.75rem; margin:0;">Target Radial</label>
+                                    <button class="btn-mini" style="font-size:0.6rem; padding:2px 6px;"
+                                        onclick="document.getElementById('pred-targetRad').value=''; document.getElementById('pred-result-time').innerText='--:-- min'; document.getElementById('pred-result-eta').innerText='';">Clear</button>
+                                </div>
+                                <input type="number" inputmode="numeric" id="pred-targetRad" placeholder="e.g. 180"
+                                    style="padding:6px; margin-top:5px;"
+                                    oninput="validateDeg360(this); calcTimeToRadial();">
+                            </div>
+                            <div
+                                style="text-align:center; background:rgba(0,0,0,0.2); padding:10px; border-radius:6px;">
+                                <div style="font-size:0.7rem; color:var(--text-muted);">Time to Target</div>
+                                <div id="pred-result-time"
+                                    style="font-size:1.3rem; font-weight:700; color:var(--accent-warning);">
+                                    --:-- min
+                                </div>
+                                <div id="pred-result-eta"
+                                    style="font-size:0.8rem; color:var(--accent-cyan); margin-top:3px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mode 2: Time → Predicted Radial -->
+                        <div class="results-panel" style="padding:12px;">
+                            <div
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">
+                                Input Time → Get Radial
+                            </div>
+                            <div class="form-group" style="margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <label class="form-label" style="font-size:0.75rem; margin:0;">Active Time
+                                        (Min)</label>
+                                    <button class="btn-mini" style="font-size:0.6rem; padding:2px 6px;"
+                                        onclick="document.getElementById('pred-activeMin').value=''; document.getElementById('pred-result-rad').innerText='--°'; document.getElementById('pred-result-rad-eta').innerText='';">Clear</button>
+                                </div>
+                                <input type="number" inputmode="numeric" id="pred-activeMin" placeholder="e.g. 5"
+                                    style="padding:6px; margin-top:5px;" oninput="calcRadialFromTime();">
+                            </div>
+                            <div
+                                style="text-align:center; background:rgba(0,0,0,0.2); padding:10px; border-radius:6px;">
+                                <div style="font-size:0.7rem; color:var(--text-muted);">Predicted Radial</div>
+                                <div id="pred-result-rad"
+                                    style="font-size:1.3rem; font-weight:700; color:var(--accent-cyan);">
+                                    --°
+                                </div>
+                                <div id="pred-result-rad-eta"
+                                    style="font-size:0.8rem; color:var(--accent-warning); margin-top:3px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VOR SITING -->
+            <div class="card">
+                <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                    <h2 class="card-title">VOR Siting (Profile View)</h2>
+                    <button class="btn-mini danger"
+                        onclick="event.stopPropagation(); clearIds('vsat-id','vsat-rObs','vsat-hStation','vsat-dObs','vsat-hObs','vsat-dAcft','vsat-overrideAngle'); calcVorSiting();">RESET</button>
+                </div>
+
+                <div class="card-content">
+                    <!-- VOR Station Group -->
+                    <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-bottom:15px;">
+                        <div style="font-size:0.75rem; color:var(--accent-cyan); font-weight:600; margin-bottom:10px;">
+                            📡 VOR Station</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">VOR Ident</label>
+                                <input type="text" id="vsat-id" maxlength="3" class="input-uppercase"
+                                    oninput="this.value=this.value.toUpperCase(); calcVorSiting()">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">VOR Height (ft)</label>
+                                <input type="number" inputmode="numeric" id="vsat-hStation" placeholder="e.g. 100"
+                                    oninput="calcVorSiting()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Obstacle Group -->
+                    <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-bottom:15px;">
+                        <div
+                            style="font-size:0.75rem; color:var(--accent-warning); font-weight:600; margin-bottom:10px;">
+                            ⚠️ Obstacle</div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">Radial</label>
+                                <input type="number" inputmode="numeric" id="vsat-rObs" placeholder="e.g. 270"
+                                    oninput="validateDeg360(this); calcVorSiting()">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">Distance (NM)</label>
+                                <input type="number" inputmode="numeric" id="vsat-dObs" placeholder="e.g. 5"
+                                    oninput="calcVorSiting()">
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">OBS Height (ft)</label>
+                                <input type="number" inputmode="numeric" id="vsat-hObs" placeholder="e.g. 1500"
+                                    oninput="calcVorSiting()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Screening Angle Result -->
+                    <div class="results-panel"
+                        style="text-align:center; margin-bottom:15px; display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size:0.8rem; color:var(--text-muted);">Screening Angle</div>
+                        <div id="vsat-angleVal" style="font-size:2.2rem; font-weight:700; color:var(--accent-cyan);">--°
+                        </div>
+                        <div id="vsat-angleNote"
+                            style="font-size:0.85rem; font-weight:700; color:var(--accent-danger); display:none; margin-top:5px;">
+                        </div>
+
+                        <div style="margin-top: 15px; width: 100%; max-width: 250px;">
+                            <label class="form-label"
+                                style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; display: block;">Override
+                                Angle (°) [Optional]</label>
+                            <input type="number" inputmode="decimal" id="vsat-overrideAngle" placeholder="e.g. 1.07"
+                                step="0.01"
+                                style="text-align: center; font-size: 1rem; padding: 6px; letter-spacing: 1px;"
+                                oninput="calcVorSiting()">
+                        </div>
+                    </div>
+
+                    <!-- Aircraft Group -->
+                    <div style="background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; margin-bottom:15px;">
+                        <div
+                            style="font-size:0.75rem; color:var(--accent-success); font-weight:600; margin-bottom:10px;">
+                            ✈️ Aircraft</div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Distance from VOR (NM)</label>
+                            <input type="number" inputmode="numeric" id="vsat-dAcft" placeholder="e.g. 10"
+                                oninput="calcVorSiting()">
+                        </div>
+                    </div>
+
+                    <div class="results-panel" style="text-align:center;">
+                        <div style="font-size:0.8rem; color:var(--text-muted);">Minimum Aircraft Altitude</div>
+                        <div class="grid-2-col"
+                            style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:10px;">
+                            <div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">Flat Earth</div>
+                                <div id="vsat-flatAlt"
+                                    style="font-size:1.4rem; font-weight:700; color:var(--text-main);">--</div>
+                            </div>
+                            <div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">Curved Earth</div>
+                                <div id="vsat-curvedAlt"
+                                    style="font-size:1.4rem; font-weight:700; color:var(--accent-success);">--</div>
+                            </div>
+                        </div>
+                        <div id="vsat-diffVal" style="font-size:0.85rem; color:var(--text-muted); margin-top:10px;">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                        <div class="toggle-wrapper toggle-active" id="vsat-toggle-curve" onclick="toggleCurvature()">
+                            <div class="toggle-switch">
+                                <div class="toggle-knob"></div>
+                            </div>
+                            <span style="font-size:0.9rem; color:var(--text-muted);">Earth Curvature</span>
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-muted); border:1px solid var(--border-light); padding:5px 10px; border-radius:6px;"
+                            id="vsat-overlayAngle">WAITING DATA</div>
+                    </div>
+
+                    <canvas id="vsatCanvas" style="height:250px;"></canvas>
+                    <div style="font-size:0.7rem; color:var(--text-muted); text-align:center; margin-top:10px;"
+                        id="vsat-profile-header">VOR Profile View</div>
+                </div>
+            </div>
+
+            <!-- SIGNAL ANALYSIS (FSPL) -->
+            <div class="card">
+                <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                    <h2 class="card-title">Signal Analysis (FSPL)</h2>
+                    <button class="btn-mini danger"
+                        onclick="event.stopPropagation(); clearSignalAnalysis();">RESET</button>
+                </div>
+
+                <div class="card-content">
+                    <!-- Mode Selector -->
+                    <div class="papi-mode-selector" style="margin-bottom:20px;">
+                        <button id="btn-fspl-vor" class="papi-mode-btn active" onclick="setFsplMode('vor')">VOR (VHF)</button>
+                        <button id="btn-fspl-dme" class="papi-mode-btn" onclick="setFsplMode('dme')">DME (UHF)</button>
+                    </div>
+
+                    <!-- Inputs Row 1: Frequency + Distance -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:0.8rem;">VOR Frequency (MHz)</label>
+                            <input type="number" inputmode="decimal" id="fspl-freq" placeholder="e.g. 115.0" step="0.05"
+                                style="padding:8px;" oninput="calcSignalAnalysis()">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:0.8rem;">Distance (NM)</label>
+                            <div style="display:flex; gap:5px;">
+                                <input type="number" inputmode="numeric" id="fspl-dist" placeholder="NM"
+                                    style="padding:8px; flex:1;" oninput="calcSignalAnalysis()">
+                                <button class="btn-mini" style="padding:4px 8px; font-size:0.65rem; white-space:nowrap; color:var(--accent-cyan); border-color:var(--accent-cyan);"
+                                    onclick="syncFsplDist()" title="Sync from VOR Siting card">Sync</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Inputs Row 2: TX Powers (separate per system) -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:0.8rem; color:var(--accent-cyan);">VOR TX Power (W)</label>
+                            <input type="number" inputmode="numeric" id="fspl-vor-txPower" placeholder="50–200 W"
+                                style="padding:8px;" oninput="calcSignalAnalysis()">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label" style="font-size:0.8rem; color:var(--accent-warning);">DME TX Power (W)</label>
+                            <input type="number" inputmode="numeric" id="fspl-dme-txPower" placeholder="100–200 W"
+                                style="padding:8px;" oninput="calcSignalAnalysis()">
+                        </div>
+                    </div>
+
+                    <!-- Auto DME Freq Info -->
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:8px 12px; border-radius:8px;">
+                        <span style="font-size:0.75rem; color:var(--text-muted);">Paired DME Freq:</span>
+                        <span id="fspl-dmeFreq" style="font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--accent-warning); font-size:0.9rem;">--</span>
+                        <span style="font-size:0.65rem; color:var(--text-muted); margin-left:auto;">ICAO Annex 10 pairing</span>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="results-panel" style="margin-top:0;">
+                        <div class="result-row"><span class="result-label">Free Space Path Loss</span><span id="fspl-fsplVal" class="result-value">--</span></div>
+                        <div class="result-row"><span class="result-label">Received Power</span><span id="fspl-rxPower" class="result-value">--</span></div>
+                        <div style="height:1px; background:rgba(255,255,255,0.1); margin:10px 0;"></div>
+                        <div class="result-row"><span class="result-label">Link Margin</span><span id="fspl-margin" class="result-value">--</span></div>
+                        <div class="result-row"><span class="result-label">Signal Status</span><span id="fspl-status" class="result-value">--</span></div>
+                        <div class="result-row"><span class="result-label">Max Usable Range</span><span id="fspl-maxRange" class="result-value">--</span></div>
+                    </div>
+
+                    <!-- DME Two-Way Detail (hidden when VOR mode) -->
+                    <div id="fspl-dme-twoway" style="display:none; margin-top:15px;">
+                        <div style="background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.2); border-radius:8px; padding:12px;">
+                            <div style="font-size:0.8rem; font-weight:700; color:var(--accent-warning); margin-bottom:10px;">DME Two-Way Link Budget</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                                <!-- Uplink -->
+                                <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px;">
+                                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">⬆️ UPLINK (Aircraft → Ground)</div>
+                                    <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-bottom:5px;">Interrogator: 1000W</div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:0.7rem; color:var(--text-muted);">Margin</div>
+                                        <div id="fspl-dme-upMargin" class="result-value" style="font-size:1.1rem;">--</div>
+                                    </div>
+                                </div>
+                                <!-- Downlink -->
+                                <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:6px;">
+                                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">⬇️ DOWNLINK (Ground → Aircraft)</div>
+                                    <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-bottom:5px;">Transponder: user TX power</div>
+                                    <div style="text-align:center;">
+                                        <div style="font-size:0.7rem; color:var(--text-muted);">Margin</div>
+                                        <div id="fspl-dme-downMargin" class="result-value" style="font-size:1.1rem;">--</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="text-align:center; margin-top:10px; font-size:0.8rem;">
+                                <span style="color:var(--text-muted);">Weak Link: </span>
+                                <span id="fspl-dme-weakLink" style="font-weight:700;">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Panel -->
+                    <div style="margin-top:15px; background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.15); border-radius:8px; padding:12px;">
+                        <div style="font-size:0.8rem; font-weight:700; color:var(--accent-primary); margin-bottom:10px;">VOR vs DME Comparison</div>
+                        <div class="result-row">
+                            <span class="result-label" style="color:var(--accent-cyan);">📡 VOR Signal Margin</span>
+                            <span id="fspl-cmp-vorMargin" class="result-value">--</span>
+                        </div>
+                        <div class="result-row">
+                            <span class="result-label" style="color:var(--accent-warning);">📡 DME Signal Margin</span>
+                            <span id="fspl-cmp-dmeMargin" class="result-value">--</span>
+                        </div>
+                        <div style="height:1px; background:rgba(255,255,255,0.1); margin:8px 0;"></div>
+                        <div class="result-row">
+                            <span class="result-label">DME disadvantage</span>
+                            <span id="fspl-cmp-delta" style="font-weight:700; font-family:'JetBrains Mono',monospace;">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Signal Curve Canvas -->
+                    <canvas id="fsplCanvas" style="height:220px; width:100%; margin-top:15px;"></canvas>
+                    <div style="font-size:0.65rem; color:var(--text-muted); text-align:center; margin-top:5px;">
+                        Signal Strength vs Distance — <span style="color:#06b6d4;">■ VOR</span> · <span style="color:#f59e0b;">■ DME</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE: ILS TOOLS -->
+        <div id="tab-ils" class="page-section hidden">
+            <div class="page-header">
+                <h1 class="page-title">ILS Tools</h1>
+                <div class="page-subtitle">Profile Altitude & Coverage Analysis</div>
+            </div>
+
+            <div class="grid-container">
+                <!-- ILS PROFILE -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">ILS Profile Altitude</h2>
+                        <div id="ils-min-info" class="minimized-info"></div>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearIds('val-ils-id','val-ils-dist','val-ils-gpa','val-ils-tch','val-ils-thre'); calcILS(); document.getElementById('ils-morse').innerHTML=''; document.getElementById('ils-min-info').innerHTML='';">RESET</button>
+                    </div>
+
+                    <!-- New: ILS Ident & Morse -->
+                    <div class="persistent-content"
+                        style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                        <div class="form-group" style="margin-bottom:0; flex:1;">
+                            <label class="form-label">ILS Ident</label>
+                            <input type="text" id="val-ils-id" maxlength="4" class="input-uppercase" style="width:80px;"
+                                oninput="this.value=this.value.toUpperCase(); updateILSMorse(this.value); autoTab(this, 4, 'val-ils-thre')">
+                        </div>
+                        <div id="ils-morse"
+                            style="font-family:'Courier New', monospace; font-weight:900; color:var(--accent-primary); font-size:1.8rem; letter-spacing:4px; text-shadow: 0 0 10px var(--accent-primary); text-align:right;">
+                        </div>
+                    </div>
+
+                    <!-- Row 1: Threshold & TCH -->
+                    <div style="display:flex; gap:15px; margin-bottom:15px; align-items:flex-end;">
+                        <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                            <label class="form-label" style="white-space:nowrap;">Threshold Elev (ft)</label>
+                            <input type="number" inputmode="decimal" id="val-ils-thre" placeholder="0"
+                                oninput="calcILS()" style="width:100%;">
+                        </div>
+                        <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                            <label class="form-label" style="white-space:nowrap;">TCH (ft)</label>
+                            <input type="number" inputmode="decimal" id="val-ils-tch" value="50" oninput="calcILS()"
+                                style="width:100%;">
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Distance & GPA -->
+                    <div style="display:flex; gap:15px; align-items:flex-end;">
+                        <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                            <label class="form-label" style="white-space:nowrap;">Dist from Thr (NM)</label>
+                            <input type="number" inputmode="decimal" id="val-ils-dist" step="0.1" oninput="calcILS()"
+                                style="width:100%;">
+                        </div>
+                        <div class="form-group" style="flex:1; margin-bottom:0; min-width:0;">
+                            <label class="form-label" style="white-space:nowrap;">Glide Path Angle (°)</label>
+                            <input type="number" inputmode="decimal" id="val-ils-gpa" step="0.1" value="3.0"
+                                oninput="calcILS()" style="width:100%;">
+                        </div>
+                    </div>
+
+                    <!-- Results: Clean List Format -->
+                    <div class="results-panel"
+                        style="margin-top:15px; background:rgba(255,255,255,0.05); padding:15px; border-radius:8px;">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span style="font-size:1rem; color:var(--text-main);">Altitude (MSL):</span>
+                            <span id="val-ils-target"
+                                style="font-size:1.6rem; font-weight:800; color:var(--accent-cyan);">-- ft</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.9rem; color:var(--text-muted);">Height (HAT):</span>
+                            <span id="val-ils-hat"
+                                style="font-size:1.1rem; font-weight:600; color:var(--text-muted);">-- ft</span>
+                        </div>
+                    </div>
+
+                    <canvas id="ilsCanvas"
+                        style="height:300px; margin-top:15px; background:rgba(0,0,0,0.1); border-radius:4px;"></canvas>
+                </div>
+
+                <!-- ILS COVERAGE -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">ILS Coverage</h2>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearIds('fc-crs','fc-dist','fc-gs'); drawILSCov();">RESET</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Final Course (Deg)</label>
+                        <input type="number" inputmode="decimal" id="fc-crs" placeholder="e.g. 130"
+                            oninput="validateDeg360(this); drawILSCov()">
+                    </div>
+
+                    <!-- Mode Toggle -->
+                    <div class="form-group"
+                        style="background:rgba(255,255,255,0.05); padding:5px; border-radius:8px; display:flex;">
+                        <button id="btn-cov-loc" class="btn-mini active" style="flex:1; margin-right:5px;"
+                            onclick="setCovMode('loc')">LOC Coverage (±40°)</button>
+                        <button id="btn-cov-gs" class="btn-mini" style="flex:1;" onclick="setCovMode('gs')">GS
+                            Coverage (±8°)</button>
+                    </div>
+
+                    <!-- Limits Display -->
+                    <div class="results-panel"
+                        style="margin-top:15px; margin-bottom:15px; background:rgba(255,255,255,0.05); padding:15px; border-radius:8px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="color:var(--text-muted);">Radial (Inbound):</span>
+                            <span id="fc-radial" style="font-weight:700; color:var(--accent-primary);">--</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                            <span style="color:var(--text-muted);">Left Limit:</span>
+                            <span id="fc-left" style="font-weight:700; color:var(--accent-cyan);">--</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Right Limit:</span>
+                            <span id="fc-right" style="font-weight:700; color:var(--accent-cyan);">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Visualization - MOVED HERE -->
+                    <div style="margin-top:20px; margin-bottom:20px;">
+                        <canvas id="fltCkCanvas"
+                            style="height:250px; background:rgba(0,0,0,0.2); border-radius:8px;"></canvas>
+                    </div>
+
+                    <div style="border-top:1px solid rgba(255,255,255,0.1); margin:15px 0;"></div>
+
+                    <div id="fc-chart-title"
+                        style="font-size:1rem; font-weight:700; margin-bottom:10px; color:var(--accent-primary);">
+                        Coverage Sector</div>
+
+                    <!-- Arc Time Calculation -->
+                    <div style="font-size:0.9rem; color:var(--text-muted); margin-bottom:10px;">Time for Arc</div>
+                    <div class="grid-2-col" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Distance (NM)</label>
+                            <input type="number" inputmode="decimal" id="fc-dist" oninput="drawILSCov()">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">Gnd Spd (Kts)</label>
+                            <input type="number" inputmode="decimal" id="fc-gs" value="160" oninput="drawILSCov()">
+                        </div>
+                    </div>
+
+                    <div class="results-panel" style="margin-top:15px; text-align:center;">
+                        <div style="font-size:0.9rem; color:var(--text-main);">Time for ±<span
+                                id="fc-arc-deg">40</span>° Arc:</div>
+                        <div id="fc-time"
+                            style="font-size:1.4rem; font-weight:700; color:var(--accent-cyan); margin-top:5px;">
+                            --:--</div>
+                    </div>
+
+                    <div class="form-group" style="margin-top:15px;">
+                        <label class="form-label">Start Time (UTC)</label>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="fc-start-time" placeholder="HHmm(SS)" maxlength="6"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, ''); drawILSCov();"
+                                style="text-align:center; font-family:'JetBrains Mono', monospace; letter-spacing:2px; flex:1;">
+                            <button class="btn-primary" style="padding:0 15px; font-size:0.9rem;"
+                                onclick="setNowUTC()">Now</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <!-- UTC Box -->
+                        <div class="results-panel"
+                            style="flex:1; text-align:center; background:rgba(16, 185, 129, 0.1); padding:10px; border:1px solid rgba(16, 185, 129, 0.3);">
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Finish (UTC)
+                            </div>
+                            <div id="fc-end-time-utc"
+                                style="font-size:1.2rem; font-weight:700; color:var(--accent-success);">--:--</div>
+                        </div>
+                        <!-- Local Box -->
+                        <div class="results-panel"
+                            style="flex:1; text-align:center; background:rgba(16, 185, 129, 0.1); padding:10px; border:1px solid rgba(16, 185, 129, 0.3);">
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Finish (Local)
+                            </div>
+                            <div id="fc-end-time-local"
+                                style="font-size:1.2rem; font-weight:700; color:var(--accent-success);">--:--</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- DDM TO MICROAMPERE CONVERTER -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">DDM ↔ µA <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted); margin-left:8px;">Annex 10</span></h2>
+                        <button class="btn-mini danger" onclick="event.stopPropagation(); clearDDMConverter();" title="Clear All">CLEAR</button>
+                    </div>
+                    <div class="card-content">
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px; line-height:1.5;">
+                            Convert DDM (Difference in Depth of Modulation) to/from µA based on ICAO Annex 10.
+                        </div>
+
+                        <!-- LOCALIZER Section -->
+                        <div style="background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.15); border-radius:10px; padding:15px; margin-bottom:15px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="font-size:0.85rem; font-weight:700; color:var(--accent-primary);">📡 LOCALIZER</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">FSD: 0.155 DDM = 150 µA</div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:end;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">DDM</label>
+                                    <input type="number" inputmode="decimal" id="ddm-loc-ddm" placeholder="0.000" step="0.001" oninput="convertDDM('loc','ddm')" style="text-align:center;">
+                                </div>
+                                <div style="font-size:1rem; color:var(--text-muted); padding-bottom:14px;">↔</div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">µA</label>
+                                    <input type="number" inputmode="decimal" id="ddm-loc-ua" placeholder="0.0" step="0.1" oninput="convertDDM('loc','ua')" style="text-align:center;">
+                                </div>
+                            </div>
+                            <!-- LOC visual bar -->
+                            <div style="margin-top:12px; position:relative; height:24px; background:rgba(0,0,0,0.2); border-radius:12px; overflow:hidden; border:1px solid var(--border-light);">
+                                <div style="position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--accent-success); z-index:2;"></div>
+                                <div id="ddm-loc-bar" style="position:absolute; left:50%; top:2px; bottom:2px; width:0; background:var(--accent-primary); border-radius:10px; transition:all 0.2s ease; opacity:0.7;"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted); margin-top:4px;">
+                                <span>−150 µA</span>
+                                <span>0</span>
+                                <span>+150 µA</span>
+                            </div>
+                        </div>
+
+                        <!-- GLIDESLOPE Section -->
+                        <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.15); border-radius:10px; padding:15px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="font-size:0.85rem; font-weight:700; color:var(--accent-warning);">📐 GLIDESLOPE</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">FSD: 0.175 DDM = 150 µA</div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:end;">
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">DDM</label>
+                                    <input type="number" inputmode="decimal" id="ddm-gs-ddm" placeholder="0.000" step="0.001" oninput="convertDDM('gs','ddm')" style="text-align:center;">
+                                </div>
+                                <div style="font-size:1rem; color:var(--text-muted); padding-bottom:14px;">↔</div>
+                                <div class="form-group" style="margin-bottom:0;">
+                                    <label class="form-label" style="font-size:0.75rem;">µA</label>
+                                    <input type="number" inputmode="decimal" id="ddm-gs-ua" placeholder="0.0" step="0.1" oninput="convertDDM('gs','ua')" style="text-align:center;">
+                                </div>
+                            </div>
+                            <!-- GS visual bar -->
+                            <div style="margin-top:12px; position:relative; height:24px; background:rgba(0,0,0,0.2); border-radius:12px; overflow:hidden; border:1px solid var(--border-light);">
+                                <div style="position:absolute; left:50%; top:0; bottom:0; width:2px; background:var(--accent-success); z-index:2;"></div>
+                                <div id="ddm-gs-bar" style="position:absolute; left:50%; top:2px; bottom:2px; width:0; background:var(--accent-warning); border-radius:10px; transition:all 0.2s ease; opacity:0.7;"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted); margin-top:4px;">
+                                <span>−150 µA</span>
+                                <span>0</span>
+                                <span>+150 µA</span>
+                            </div>
+                        </div>
+
+                        <!-- Annex 10 Reference -->
+                        <div style="margin-top:15px; background:rgba(0,0,0,0.15); border-radius:8px; padding:12px;">
+                            <div style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">ICAO Annex 10 Reference</div>
+                            <table class="modern-table" style="font-size:0.8rem;">
+                                <thead>
+                                    <tr><th>Parameter</th><th style="text-align:center;">LOC</th><th style="text-align:center;">GS</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td style="color:var(--text-muted);">FSD DDM</td><td style="text-align:center;">0.155</td><td style="text-align:center;">0.175</td></tr>
+                                    <tr><td style="color:var(--text-muted);">FSD µA</td><td style="text-align:center;">150</td><td style="text-align:center;">150</td></tr>
+                                    <tr><td style="color:var(--text-muted);">Scale Factor</td><td style="text-align:center;">967.74 µA/DDM</td><td style="text-align:center;">857.14 µA/DDM</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- MODULE: MISC TOOLS -->
+        <div id="tab-misc" class="page-section hidden">
+            <div class="page-header">
+                <h1 class="page-title">Converters & Utilities</h1>
+                <div class="page-subtitle">Fuel, Units, Morse Code, and Coordinates</div>
+            </div>
+
+            <div class="grid-container">
+                <!-- FUEL CALC -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">Fuel Calculator</h2>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearIds('fuel-liters','fuel-gal','fuel-lbs','fuel-kg');">RESET</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Specific Gravity (SG)</label>
+                        <input type="number" inputmode="decimal" id="fuel-sg" value="0.80" step="0.01"
+                            oninput="calcFuel('sg')">
+                    </div>
+
+                    <div class="grid-2-col"
+                        style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Liters</label><input
+                                type="number" inputmode="decimal" id="fuel-liters" oninput="calcFuel('liters')"></div>
+                        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Gallons
+                                (US)</label><input type="number" inputmode="decimal" id="fuel-gal"
+                                oninput="calcFuel('gal')"></div>
+                    </div>
+                    <div class="grid-2-col" style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Pounds
+                                (lbs)</label><input type="number" inputmode="decimal" id="fuel-lbs"
+                                oninput="calcFuel('lbs')"></div>
+                        <div class="form-group" style="margin-bottom:0;"><label class="form-label">Kilograms
+                                (kg)</label><input type="number" inputmode="decimal" id="fuel-kg"
+                                oninput="calcFuel('kg')"></div>
+                    </div>
+                </div>
+
+                <!-- UNIT CONVERTER -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">Unit Converter</h2>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearIds('u-nm','u-m','u-ft','u-km','u-kts','u-mph','u-kph','u-mps','u-hpa','u-inhg','u-grad-pct','u-grad-deg');">RESET</button>
+                    </div>
+
+                    <!-- DISTANCE -->
+                    <div style="font-size:0.8rem; color:var(--accent-primary); margin-bottom:5px; font-weight:600;">
+                        DISTANCE</div>
+                    <div class="grid-2-col"
+                        style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">NM</label>
+                            <input type="number" inputmode="decimal" id="u-nm" placeholder="0" oninput="convDist('nm')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">Meters</label>
+                            <input type="number" inputmode="decimal" id="u-m" placeholder="0" oninput="convDist('m')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">Feet</label>
+                            <input type="number" inputmode="decimal" id="u-ft" placeholder="0" oninput="convDist('ft')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">KM</label>
+                            <input type="number" inputmode="decimal" id="u-km" placeholder="0" oninput="convDist('km')">
+                        </div>
+                    </div>
+
+                    <!-- SPEED -->
+                    <div
+                        style="font-size:0.8rem; color:var(--accent-success); margin-bottom:5px; font-weight:600; margin-top:10px;">
+                        SPEED</div>
+                    <div class="grid-2-col"
+                        style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">Knots</label>
+                            <input type="number" inputmode="decimal" id="u-kts" placeholder="0"
+                                oninput="convSpeed('kts')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">MPH</label>
+                            <input type="number" inputmode="decimal" id="u-mph" placeholder="0"
+                                oninput="convSpeed('mph')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">KPH</label>
+                            <input type="number" inputmode="decimal" id="u-kph" placeholder="0"
+                                oninput="convSpeed('kph')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">m/s</label>
+                            <input type="number" inputmode="decimal" id="u-mps" placeholder="0"
+                                oninput="convSpeed('mps')">
+                        </div>
+                    </div>
+
+                    <!-- PRESSURE -->
+                    <div
+                        style="font-size:0.8rem; color:var(--accent-warning); margin-bottom:5px; font-weight:600; margin-top:10px;">
+                        PRESSURE</div>
+                    <div class="grid-2-col" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">hPa
+                                (mbar)</label>
+                            <input type="number" inputmode="decimal" id="u-hpa" placeholder="0"
+                                oninput="convPress('hpa')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">inHg</label>
+                            <input type="number" inputmode="decimal" id="u-inhg" placeholder="0"
+                                oninput="convPress('inhg')">
+                        </div>
+                    </div>
+
+                    <!-- GRADIENT -->
+                    <div
+                        style="font-size:0.8rem; color:var(--accent-cyan); margin-bottom:5px; font-weight:600; margin-top:10px;">
+                        GRADIENT</div>
+                    <div class="grid-2-col" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">Percent
+                                (%)</label>
+                            <input type="number" inputmode="decimal" id="u-grad-pct" placeholder="0"
+                                oninput="convGrad('pct')">
+                        </div>
+                        <div class="input-wrapper">
+                            <label class="form-label"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">Degree
+                                (°)</label>
+                            <input type="number" inputmode="decimal" id="u-grad-deg" placeholder="0"
+                                oninput="convGrad('deg')">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ALTIMETER CALCULATOR (QNH -> STD) -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header no-minimize">
+                        <h2 class="card-title">ALTIMETER SETTING (QNH → STD)</h2>
+                        <button class="btn-mini danger"
+                            onclick="clearIds('alt-qnh','alt-read'); document.getElementById('alt-corr').innerText='-- ft'; document.getElementById('alt-palt').innerText='-- ft';">CLR</button>
+                    </div>
+
+                    <div style="padding:15px;">
+                        <div class="grid-2-col"
+                            style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
+                            <div class="input-wrapper">
+                                <label class="form-label"
+                                    style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">QNH
+                                    (hPa)</label>
+                                <input type="number" inputmode="decimal" id="alt-qnh" placeholder="1013"
+                                    oninput="calcAltimeter()">
+                            </div>
+                            <div class="input-wrapper">
+                                <label class="form-label"
+                                    style="font-size:0.75rem; color:var(--text-muted); margin-bottom:2px; display:block;">Reading
+                                    (ft)</label>
+                                <input type="number" inputmode="decimal" id="alt-read" placeholder="7000"
+                                    oninput="calcAltimeter()">
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(255,255,255,0.05); border-radius:8px; padding:15px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span style="color:var(--text-muted);">Correction:</span>
+                                <span id="alt-corr" style="font-weight:bold; color:var(--accent-primary);">--
+                                    ft</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between;">
+                                <span style="color:var(--text-muted);">Pressure Alt (1013.25):</span>
+                                <span id="alt-palt"
+                                    style="font-weight:bold; color:var(--accent-primary); font-size:1.1rem;">--
+                                    ft</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MORSE CODE DECODER -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header minimizable" onclick="toggleCard(this)" title="Click to Minimize/Expand">
+                        <h2 class="card-title">Morse Code Decoder <span style="font-size:0.85rem; font-weight:400; color:var(--text-muted); margin-left:8px;">· / — → ABC</span></h2>
+                        <button class="btn-mini danger" onclick="event.stopPropagation(); clearMorseDecoder();" title="Clear All">CLEAR</button>
+                    </div>
+                    <div class="card-content">
+                        <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px; line-height:1.5;">
+                            Type <span style="color:var(--accent-primary); font-weight:700;">.</span> (dot) and <span style="color:var(--accent-primary); font-weight:700;">-</span> (dash) for each letter. Separate letters with <span style="color:var(--accent-warning); font-weight:700;">SPACE</span>. Separate words with <span style="color:var(--accent-warning); font-weight:700;">/</span> or double space.
+                        </div>
+                        <!-- Input area -->
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label" style="font-size:0.75rem;">Morse Input (dots & dashes)</label>
+                            <input type="text" id="morse-decode-input" placeholder="e.g. .- -... -.-." style="font-family:'JetBrains Mono', monospace; font-size:1.1rem; letter-spacing:3px; padding:14px 15px;" oninput="decodeMorseInput()" autocomplete="off" autocorrect="off" spellcheck="false">
+                        </div>
+                        <!-- Decoded output -->
+                        <div style="background:rgba(0,0,0,0.25); border-radius:10px; padding:15px; margin-bottom:15px; border:1px solid rgba(59,130,246,0.15);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Decoded Text</span>
+                                <button class="btn-mini" onclick="copyMorseResult()" style="font-size:0.65rem; padding:2px 8px;">COPY</button>
+                            </div>
+                            <div id="morse-decode-output" style="font-family:'JetBrains Mono', monospace; font-size:1.6rem; font-weight:700; color:var(--accent-primary); min-height:40px; letter-spacing:4px; word-break:break-all; text-shadow: 0 0 8px rgba(59,130,246,0.3);">
+                                —
+                            </div>
+                        </div>
+                        <!-- Per-letter breakdown -->
+                        <div id="morse-breakdown" style="display:flex; flex-wrap:wrap; gap:6px; min-height:28px;"></div>
+
+                        <!-- Divider -->
+                        <div style="height:1px; background:var(--border-light); margin:18px 0;"></div>
+
+                        <!-- Reverse: Text to Morse -->
+                        <div class="form-group" style="margin-bottom:12px;">
+                            <label class="form-label" style="font-size:0.75rem;">Encode: Text → Morse</label>
+                            <input type="text" id="morse-encode-input" placeholder="e.g. ABC" style="font-size:1rem; padding:12px 15px; text-transform:uppercase;" oninput="encodeMorseInput()" autocomplete="off">
+                        </div>
+                        <div id="morse-encode-output" style="font-family:'JetBrains Mono', monospace; font-size:1.2rem; font-weight:700; color:var(--accent-cyan); min-height:30px; letter-spacing:3px; word-break:break-all; padding:10px; background:rgba(0,0,0,0.15); border-radius:8px;">
+                            —
+                        </div>
+
+                        <!-- Reference Table (collapsed) -->
+                        <details style="margin-top:15px;" ontoggle="if(this.open) buildMorseRefTable();">
+                            <summary style="cursor:pointer; font-size:0.8rem; color:var(--text-muted); font-weight:600; user-select:none;">📖 Morse Code Reference</summary>
+                            <div id="morse-ref-table" style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fill, minmax(80px, 1fr)); gap:4px; font-family:'JetBrains Mono', monospace; font-size:0.75rem;"></div>
+                        </details>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MODULE: COORDINATES -->
+        <div id="tab-coord" class="page-section hidden" style="padding-bottom: 50px;">
+            <div class="page-header" style="margin-bottom: 10px;">
+                <h1 class="page-title">Coordinate Converter</h1>
+                <div class="page-subtitle">Batch Convert DMS &harr; DMM</div>
+            </div>
+
+            <!-- Sticky Toolbar - stays visible while scrolling -->
+            <div class="coord-toolbar" style="position: sticky; top: 0; z-index: 5; background: rgba(10, 10, 18, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 12px 15px; margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <label
+                        style="font-size:0.7rem; color:var(--text-muted); font-weight:600; white-space:nowrap;">PREFIX:</label>
+                    <input type="text" id="coord-ff-prefix" value="WPT" maxlength="8" placeholder="WPT"
+                        style="width:70px; text-transform:uppercase; height:28px; font-size:0.8rem; padding:2px 6px;"
+                        oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '')">
+                </div>
+                <button class="btn-mini" onclick="exportCoordsCSV()">EXPORT FOREFLIGHT</button>
+                <button class="btn-mini" onclick="exportCoordsDMSDMM()">EXPORT DMS/DMM</button>
+                <button class="btn-mini" onclick="document.getElementById('csv-import-input').click()">IMPORT
+                    CSV</button>
+                <input type="file" id="csv-import-input" accept=".csv" style="display:none"
+                    onchange="importCoordsCSV(this)">
+                <button class="btn-mini danger" onclick="clearAllCoords()">CLEAR ALL</button>
+            </div>
+
+            <!-- Waypoint cards flow directly in page - no outer card wrapper -->
+            <div id="coord-rows-container"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; justify-content: center;">
+                <!-- Rows injected via JS -->
+            </div>
+        </div>
+
+        <!-- MODULE: WAYPOINT PROJECTOR -->
+        <div id="tab-projector" class="page-section hidden" style="padding-bottom: 50px;">
+            <div class="page-header">
+                <h1 class="page-title">Waypoint Projector</h1>
+                <div class="page-subtitle">WGS-84 Geodesic Calculations (Forward & Inverse)</div>
+            </div>
+
+            <div class="grid-container">
+                <!-- Mode 0: Distance to Origin -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)">
+                        <h2 class="card-title">Distance from Origin</h2>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearProjector('modeO');">RESET</button>
+                    </div>
+                    <div class="card-content">
+                        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">Calculate distance
+                            & azimuth from reference (0,0) to a waypoint.</div>
+
+                        <div id="proj-o-ptA"></div>
+
+                        <div class="results-panel">
+                            <div class="result-row"><span class="result-label">True Track from (0,0)</span><span
+                                    id="proj-o-trk" class="result-value">-- °</span></div>
+                            <hr style="border:0; border-top:1px solid var(--border-light); margin:5px 0;">
+                            <div class="result-row"><span class="result-label">Distance from (0,0)</span><span
+                                    id="proj-o-dist-nm" class="result-value res-accent">-- NM</span></div>
+                            <div class="result-row"><span class="result-label"
+                                    style="visibility:hidden;">Dist</span><span id="proj-o-dist-m" class="result-value"
+                                    style="font-size:0.85rem; color:var(--text-muted);">-- m</span></div>
+                            <div class="result-row"><span class="result-label"
+                                    style="visibility:hidden;">Dist</span><span id="proj-o-dist-ft" class="result-value"
+                                    style="font-size:0.85rem; color:var(--text-muted);">-- ft</span></div>
+                            <div class="result-row"><span class="result-label"
+                                    style="visibility:hidden;">Dist</span><span id="proj-o-dist-km" class="result-value"
+                                    style="font-size:0.85rem; color:var(--text-muted);">-- km</span></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Mode 1: Track Extension -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)">
+                        <h2 class="card-title">Track Extension</h2>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearProjector('modeA');">RESET</button>
+                    </div>
+                    <div class="card-content">
+                        <!-- Inputs for Point A -->
+                        <div style="font-size:0.85rem; color:var(--accent-cyan); margin-bottom:5px; margin-top:10px;">
+                            Point A (Start)</div>
+                        <div id="proj-a-ptA"></div>
+
+                        <!-- Inputs for Point B -->
+                        <div style="font-size:0.85rem; color:var(--accent-cyan); margin-top:20px; margin-bottom:5px;">
+                            Point B (Reference)</div>
+                        <div id="proj-a-ptB"></div>
+
+                        <div
+                            style="margin-top:20px; display:flex; gap:10px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                            <div class="vp-input-group">
+                                <label style="color:var(--text-main); font-weight:bold;">Dist B to C (NM)</label>
+                                <input type="number" inputmode="decimal" id="proj-a-dist" step="0.01"
+                                    placeholder="e.g. 10.5" oninput="calcProjectorA()"
+                                    style="border-color:var(--accent-primary);">
+                            </div>
+                        </div>
+
+                        <div class="results-panel">
+                            <div class="result-row"><span class="result-label">Azimuth (A → B)</span><span
+                                    id="proj-a-azik" class="result-value res-accent">-- °</span></div>
+                            <div class="result-row"><span class="result-label">Base Dist (A → B)</span><span
+                                    id="proj-a-basedist" class="result-value">-- NM</span></div>
+                            <div class="result-row"><span class="result-label">Total Dist (A → C)</span><span
+                                    id="proj-a-totdist" class="result-value">-- NM</span></div>
+
+                            <hr style="border:0; border-top:1px solid var(--border-light); margin:10px 0;">
+
+                            <div class="result-row" style="margin-bottom:8px;"><span class="result-label"
+                                    style="color:var(--accent-warning); font-weight:bold;">Point C (Result)</span></div>
+                            <div class="result-row"><span class="result-label">DMS</span><span id="proj-a-res-dms"
+                                    class="result-value" style="color:var(--accent-warning);">--</span></div>
+                            <div class="result-row"><span class="result-label">DMM</span><span id="proj-a-res-dmm"
+                                    class="result-value" style="color:var(--accent-warning);">--</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mode 2: IFP Projection -->
+                <div class="card">
+                    <div class="card-header minimizable" onclick="toggleCard(this)">
+                        <h2 class="card-title">Trigonometry / Altitudes</h2>
+                        <button class="btn-mini danger"
+                            onclick="event.stopPropagation(); clearProjector('modeB');">RESET</button>
+                    </div>
+                    <div class="card-content">
+                        <!-- Inputs for Point A -->
+                        <div style="font-size:0.85rem; color:var(--accent-cyan); margin-bottom:5px; margin-top:10px;">
+                            Point A (Start)</div>
+                        <div id="proj-b-ptA"></div>
+
+                        <div
+                            style="display:flex; flex-wrap:wrap; gap:10px; margin-top:20px; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+                            <div class="vp-input-group" style="flex:1;">
+                                <label style="color:var(--text-main); font-weight:bold;">True Track (°)</label>
+                                <input type="number" inputmode="decimal" id="proj-b-track" step="0.01"
+                                    placeholder="0 - 360" oninput="validateDeg360(this); calcProjectorB()">
+                            </div>
+                            <div class="vp-input-group" style="flex:1;">
+                                <label style="color:var(--text-main); font-weight:bold;">Dist Calc Mode</label>
+                                <select id="proj-b-mode"
+                                    style="width:100%; padding:8px; border-radius:6px; background:rgba(0,0,0,0.5); color:var(--text-main); border:1px solid var(--border-light);"
+                                    onchange="toggleProjBMode(); calcProjectorB()">
+                                    <option value="gradient">Gradient / Alt</option>
+                                    <option value="reference">Reference Dist</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Gradient Mode Inputs -->
+                        <div id="proj-b-grad-inputs"
+                            style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; padding:0 10px;">
+                            <div class="vp-input-group">
+                                <label>Alt A (ft)</label>
+                                <input type="number" inputmode="decimal" id="proj-b-altA" placeholder="e.g. 5000"
+                                    oninput="calcProjectorB()">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>Alt B (ft)</label>
+                                <input type="number" inputmode="decimal" id="proj-b-altB" placeholder="Target Alt"
+                                    oninput="calcProjectorB()">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>Gradient (%)</label>
+                                <input type="number" inputmode="decimal" id="proj-b-grad" step="0.1"
+                                    placeholder="e.g. 5.2" oninput="calcProjectorB()">
+                            </div>
+                        </div>
+
+                        <!-- Reference Mode Inputs -->
+                        <div id="proj-b-ref-inputs"
+                            style="display:none; flex-wrap:wrap; gap:10px; margin-top:10px; padding:0 10px;">
+                            <div class="vp-input-group">
+                                <label>Dist Ref to A (NM)</label>
+                                <input type="number" id="proj-b-refA" step="0.01" placeholder="e.g. 15.0"
+                                    oninput="calcProjectorB()">
+                            </div>
+                            <div class="vp-input-group">
+                                <label>Dist Ref to B (NM)</label>
+                                <input type="number" id="proj-b-refB" step="0.01" placeholder="e.g. 10.0"
+                                    oninput="calcProjectorB()">
+                            </div>
+                        </div>
+
+                        <div class="results-panel">
+                            <div class="result-row"><span class="result-label">Calc Distance (A → B)</span><span
+                                    id="proj-b-dist" class="result-value res-accent">-- NM</span></div>
+
+                            <hr style="border:0; border-top:1px solid var(--border-light); margin:10px 0;">
+
+                            <div class="result-row" style="margin-bottom:8px;"><span class="result-label"
+                                    style="color:var(--accent-warning); font-weight:bold;">Point B (Result)</span></div>
+                            <div class="result-row"><span class="result-label">DMS</span><span id="proj-b-res-dms"
+                                    class="result-value" style="color:var(--accent-warning);">--</span></div>
+                            <div class="result-row"><span class="result-label">DMM</span><span id="proj-b-res-dmm"
+                                    class="result-value" style="color:var(--accent-warning);">--</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODULE: RF ARC (Radius to Fix) -->
+        <div id="tab-rfarc" class="page-section hidden" style="padding-bottom: 50px;">
+            <div class="page-header">
+                <h1 class="page-title">RF Arc (Radius to Fix)</h1>
+                <div class="page-subtitle">Calculate coordinates along a curved PBN RF leg</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header no-minimize">
+                    <h2 class="card-title">Arc Generator</h2>
+                    <button class="btn-mini danger" onclick="clearRFArc();">RESET</button>
+                </div>
+
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">
+                    Calculate coordinates along a curved path (RF leg) around a center point at a given radius.
+                </div>
+
+                <!-- Center Coordinate -->
+                <div style="font-size:0.85rem; color:var(--accent-cyan); margin-bottom:5px;">Center Point</div>
+                <div id="proj-rf-center"></div>
+
+                <!-- Input Mode Toggle -->
+                <div style="display:flex; gap:10px; margin-top:20px; align-items:center;">
+                    <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">START/END BY:</span>
+                    <button class="btn-mini active" id="rf-mode-rad" onclick="setRFInputMode('radial')"
+                        style="padding:6px 14px;">Radial (°)</button>
+                    <button class="btn-mini" id="rf-mode-wpt" onclick="setRFInputMode('waypoint')"
+                        style="padding:6px 14px;">Waypoint</button>
+                </div>
+
+                <!-- Parameters -->
+                <div
+                    style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                    <div class="vp-input-group" style="flex:1; min-width:100px;">
+                        <label style="color:var(--text-main); font-weight:bold;">Radius (NM)</label>
+                        <input type="number" inputmode="decimal" id="rf-radius" step="0.01" placeholder="e.g. 5.0"
+                            style="border-color:var(--accent-primary);">
+                    </div>
+                    <!-- Radial Mode Inputs -->
+                    <div class="vp-input-group" id="rf-rad-start-grp" style="flex:1; min-width:100px;">
+                        <label style="color:var(--text-main); font-weight:bold;">Start Radial (°)</label>
+                        <input type="number" inputmode="decimal" id="rf-start-rad" step="1" min="0" max="360"
+                            placeholder="e.g. 090" oninput="validateDeg360(this)">
+                    </div>
+                    <div class="vp-input-group" id="rf-rad-end-grp" style="flex:1; min-width:100px;">
+                        <label style="color:var(--text-main); font-weight:bold;">End Radial (°)</label>
+                        <input type="number" inputmode="decimal" id="rf-end-rad" step="1" min="0" max="360"
+                            placeholder="e.g. 180" oninput="validateDeg360(this)">
+                    </div>
+                    <div class="vp-input-group" style="flex:1; min-width:100px;">
+                        <label style="color:var(--text-main); font-weight:bold;">Interval (°)</label>
+                        <input type="number" inputmode="decimal" id="rf-interval" step="1" min="1" max="90" value="1"
+                            placeholder="e.g. 3">
+                    </div>
+                </div>
+
+                <!-- Waypoint Mode Inputs (hidden by default) -->
+                <div id="rf-wpt-inputs" style="display:none; margin-top:10px;">
+                    <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px; margin-bottom:10px;">
+                        <div
+                            style="font-size:0.85rem; color:var(--accent-success); margin-bottom:5px; font-weight:600;">
+                            Start Waypoint</div>
+                        <div id="proj-rf-start-wpt"></div>
+                        <div id="rf-start-rad-calc" style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
+                        </div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:8px;">
+                        <div
+                            style="font-size:0.85rem; color:var(--accent-warning); margin-bottom:5px; font-weight:600;">
+                            End Waypoint</div>
+                        <div id="proj-rf-end-wpt"></div>
+                        <div id="rf-end-rad-calc" style="font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Direction & Actions -->
+                <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px; align-items:center;">
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn-mini active" id="rf-dir-cw" onclick="setRFDir('cw')"
+                            style="padding:8px 16px;">CW ↻</button>
+                        <button class="btn-mini" id="rf-dir-ccw" onclick="setRFDir('ccw')" style="padding:8px 16px;">CCW
+                            ↺</button>
+                    </div>
+                    <button class="btn-mini" onclick="calcRFArc()"
+                        style="padding:8px 20px; background:rgba(16,185,129,0.2); border-color:var(--accent-success); color:var(--accent-success); font-weight:700;">
+                        CALCULATE
+                    </button>
+                    <button class="btn-mini" onclick="exportRFArc('dms')" style="padding:8px 14px;">EXPORT
+                        DMS</button>
+                    <button class="btn-mini" onclick="exportRFArc('dmm')" style="padding:8px 14px;">EXPORT
+                        DMM</button>
+                </div>
+
+                <!-- Results Summary -->
+                <div id="rf-summary"
+                    style="display:none; margin-top:15px; padding:10px 15px; background:rgba(6,182,212,0.1); border:1px solid rgba(6,182,212,0.3); border-radius:8px; font-size:0.85rem; color:var(--text-main);">
+                </div>
+
+                <!-- Results Table -->
+                <div
+                    style="margin-top:15px; max-height:500px; overflow-y:auto; border-radius:8px; border:1px solid var(--border-light);">
+                    <table class="modern-table" id="rf-results-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:center; width:40px;">#</th>
+                                <th style="text-align:center;">Radial</th>
+                                <th>Lat (DMS)</th>
+                                <th>Lon (DMS)</th>
+                                <th>Lat (DMM)</th>
+                                <th>Lon (DMM)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rf-results-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ForeFlight Export Section -->
+            <div
+                style="margin-top:20px; padding:15px; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:10px;">
+                <div style="font-size:0.9rem; color:var(--accent-primary); font-weight:700; margin-bottom:10px;">📱
+                    ForeFlight Export</div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:12px;">Export as
+                    <code>user_waypoints.csv</code> for bulk import into ForeFlight. Lat/Lon in decimal degrees.
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+                    <div class="vp-input-group" style="flex:1; min-width:120px;">
+                        <label style="color:var(--text-main); font-weight:bold; font-size:0.8rem;">Waypoint
+                            Prefix</label>
+                        <input type="text" id="rf-ff-prefix" value="RFARC" maxlength="8" placeholder="e.g. RFARC"
+                            style="text-transform:uppercase;"
+                            oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '')">
+                    </div>
+                    <div class="vp-input-group" style="flex:1.5; min-width:160px;">
+                        <label style="color:var(--text-main); font-weight:bold; font-size:0.8rem;">Description
+                            (optional)</label>
+                        <input type="text" id="rf-ff-desc" placeholder="e.g. RF Arc 5NM" maxlength="50">
+                    </div>
+                    <div class="vp-input-group" style="flex:0.7; min-width:80px;">
+                        <label style="color:var(--text-main); font-weight:bold; font-size:0.8rem;">Elevation
+                            (ft)</label>
+                        <input type="number" id="rf-ff-elev" placeholder="0" value="">
+                    </div>
+                    <button class="btn-mini" onclick="exportForeFlight()"
+                        style="padding:8px 18px; background:rgba(59,130,246,0.2); border-color:var(--accent-primary); color:var(--accent-primary); font-weight:700; height:38px;">
+                        EXPORT FOREFLIGHT
+                    </button>
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:8px;">Waypoint names: PREFIX_R090,
+                    PREFIX_R093, etc. &bull; All caps, min 3 chars &bull; File: <code>user_waypoints.csv</code></div>
+            </div>
+        </div>
+
+    </main>
+
+        <button class="theme-fab" id="theme-btn" onclick="toggleTheme()" title="Toggle Day/Night Theme">
+            <svg id="theme-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+        </button>
+
+    <script src="js/common.js"></script>
+    <script src="js/geo-utils.js"></script>
+    <script src="js/gradient.js"></script>
+    <script src="js/papi.js"></script>
+    <script src="js/vor.js"></script>
+    <script src="js/theodolite.js"></script>
+    <script src="js/ils.js"></script>
+    <script src="js/misc.js"></script>
+    <script src="js/coord.js"></script>
+    <script src="js/projector.js"></script>
+    <script src="js/rfarc.js"></script>
+</body>
+</html>

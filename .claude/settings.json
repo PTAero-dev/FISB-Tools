@@ -6,5 +6,20 @@
       "WebFetch(domain:6ff45ed1.fisbtools.pages.dev)",
       "PowerShell($lines = [System.IO.File]::ReadAllLines\\(\"e:\\\\OneDrive - AEROTHAI\\\\09.Pythonista\\\\.Projects\\\\FISB-Tools\\\\dist\\\\index.html\"\\); $maxLen = \\($lines | Measure-Object -Property Length -Maximum\\).Maximum; $longLines = $lines | Where-Object { $_.Length -gt 5000 } | Measure-Object; Write-Host \"Max line length: $maxLen\"; Write-Host \"Lines over 5000 chars: $\\($longLines.Count\\)\")"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/auto-commit.sh\"",
+            "timeout": 120,
+            "statusMessage": "Auto-committing to GitHub..."
+          }
+        ]
+      }
+    ]
   }
 }
