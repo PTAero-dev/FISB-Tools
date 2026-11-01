@@ -150,7 +150,6 @@ function updateWaypointErrorState(wptNum) {
 }
 
 function checkCoordLimit(input, max, isDegree) {
-    sanitizeCoordInput(input, !isDegree && input.placeholder && input.placeholder.includes('.'));
     const val = parseFloat(input.value);
     if (isNaN(val)) {
         setFieldInvalid(input, false);
@@ -209,44 +208,92 @@ function initCoordRows() {
 
 function calcCoordDMS(idx) {
     // Validate DMS inputs first; do not overwrite DMM if DMS is out of bounds
-    if (!validateCoordAxis(idx, 'dms')) return;
+    if (!validateCoordAxis(idx, 'dms')) {
+        scheduleCoordPlot();
+        return;
+    }
 
-    let d = parseFloat(document.getElementById(`c-d-${idx}`).value);
-    let m = parseFloat(document.getElementById(`c-m-${idx}`).value);
-    let s = parseFloat(document.getElementById(`c-s-${idx}`).value);
+    const elD = document.getElementById(`c-d-${idx}`);
+    const elM = document.getElementById(`c-m-${idx}`);
+    const elS = document.getElementById(`c-s-${idx}`);
+    const elDD = document.getElementById(`c-dd-${idx}`);
+    const elDM = document.getElementById(`c-dm-${idx}`);
 
-    if (isNaN(d)) d = 0; // Allow 0 deg
-    if (isNaN(m) && isNaN(s)) return; // Don't update if only Deg entered
+    let d = parseFloat(elD.value);
+    let m = parseFloat(elM.value);
+    let s = parseFloat(elS.value);
 
-    let mm = (m || 0) + ((s || 0) / 60);
+    if (isNaN(d) && isNaN(m) && isNaN(s)) {
+        elDD.value = '';
+        elDM.value = '';
+        setFieldInvalid(elDD, false);
+        setFieldInvalid(elDM, false);
+        updateWaypointErrorState(Math.ceil(idx / 2));
+        scheduleCoordPlot();
+        return;
+    }
+
     const isLat = (idx % 2 !== 0);
     const degPad = isLat ? 2 : 3;
-    document.getElementById(`c-dd-${idx}`).value = String(d).padStart(degPad, "0");
-    let mmFixed = mm.toFixed(2);
-    let [mmInt, mmDec] = mmFixed.split(".");
-    document.getElementById(`c-dm-${idx}`).value = mmInt.padStart(2, "0") + "." + mmDec;
+    if (!isNaN(d)) elDD.value = String(d).padStart(degPad, "0");
+    if (!isNaN(m) || !isNaN(s)) {
+        if (isNaN(d)) elDD.value = String(0).padStart(degPad, "0");
+        let mm = (m || 0) + ((s || 0) / 60);
+        let mmFixed = mm.toFixed(2);
+        let [mmInt, mmDec] = mmFixed.split(".");
+        elDM.value = mmInt.padStart(2, "0") + "." + mmDec;
+    }
+    setFieldInvalid(elDD, false);
+    setFieldInvalid(elDM, false);
     updateWaypointErrorState(Math.ceil(idx / 2));
+    scheduleCoordPlot();
 }
 
 function calcCoordDMM(idx) {
     // Validate DMM inputs first; do not overwrite DMS if DMM is out of bounds
-    if (!validateCoordAxis(idx, 'dmm')) return;
+    if (!validateCoordAxis(idx, 'dmm')) {
+        scheduleCoordPlot();
+        return;
+    }
 
-    let d = parseFloat(document.getElementById(`c-dd-${idx}`).value);
-    let mm = parseFloat(document.getElementById(`c-dm-${idx}`).value);
-    if (isNaN(d)) d = 0;
-    if (isNaN(mm)) return;
+    const elD = document.getElementById(`c-d-${idx}`);
+    const elM = document.getElementById(`c-m-${idx}`);
+    const elS = document.getElementById(`c-s-${idx}`);
+    const elDD = document.getElementById(`c-dd-${idx}`);
+    const elDM = document.getElementById(`c-dm-${idx}`);
 
-    let m = Math.floor(mm);
-    let s = (mm - m) * 60;
+    let d = parseFloat(elDD.value);
+    let mm = parseFloat(elDM.value);
+
+    if (isNaN(d) && isNaN(mm)) {
+        elD.value = '';
+        elM.value = '';
+        elS.value = '';
+        setFieldInvalid(elD, false);
+        setFieldInvalid(elM, false);
+        setFieldInvalid(elS, false);
+        updateWaypointErrorState(Math.ceil(idx / 2));
+        scheduleCoordPlot();
+        return;
+    }
+
     const isLat = (idx % 2 !== 0);
     const degPad = isLat ? 2 : 3;
-    document.getElementById(`c-d-${idx}`).value = String(d).padStart(degPad, "0");
-    document.getElementById(`c-m-${idx}`).value = String(m).padStart(2, "0");
-    let sFixed = s.toFixed(2);
-    let [sInt, sDec] = sFixed.split(".");
-    document.getElementById(`c-s-${idx}`).value = sInt.padStart(2, "0") + "." + sDec;
+    if (!isNaN(d)) elD.value = String(d).padStart(degPad, "0");
+    if (!isNaN(mm)) {
+        if (isNaN(d)) elD.value = String(0).padStart(degPad, "0");
+        let m = Math.floor(mm);
+        let s = (mm - m) * 60;
+        elM.value = String(m).padStart(2, "0");
+        let sFixed = s.toFixed(2);
+        let [sInt, sDec] = sFixed.split(".");
+        elS.value = sInt.padStart(2, "0") + "." + sDec;
+    }
+    setFieldInvalid(elD, false);
+    setFieldInvalid(elM, false);
+    setFieldInvalid(elS, false);
     updateWaypointErrorState(Math.ceil(idx / 2));
+    scheduleCoordPlot();
 }
 
 function clearCoordRow(idx) {
@@ -265,6 +312,10 @@ function clearAllCoords() {
 
 // --- CSV EXPORT/IMPORT (ForeFlight Format) ---
 function exportCoordsCSV() {
+    if (document.querySelector('#coord-rows-container .wpt.has-err')) {
+        notify('Please fix invalid coordinates (highlighted in red) before exporting.', true);
+        return;
+    }
     let prefix = (document.getElementById('coord-ff-prefix').value || 'WPT').toUpperCase().replace(/[^A-Z0-9_-]/g, '');
     if (prefix.length < 1) prefix = 'WPT';
 
@@ -294,6 +345,10 @@ function exportCoordsCSV() {
 }
 
 function exportCoordsDMSDMM() {
+    if (document.querySelector('#coord-rows-container .wpt.has-err')) {
+        notify('Please fix invalid coordinates (highlighted in red) before exporting.', true);
+        return;
+    }
     let csv = '#,Lat (DMS),Lon (DMS),Lat (DMM),Lon (DMM)\n';
     let wptCount = 0;
 

@@ -89,55 +89,105 @@ function initProjectorInputs() {
     document.getElementById('proj-rf-end-wpt').innerHTML = getCoordInputHTML('prfe', '(End)');
 }
 
-function calcProjDMS(prefix, isLat) {
-    if (!validateProjCoordBox(prefix, isLat, 'dms')) return;
-    let d = parseFloat(document.getElementById(`${prefix}-d`).value) || 0;
-    let m = parseFloat(document.getElementById(`${prefix}-m`).value) || 0;
-    let s = parseFloat(document.getElementById(`${prefix}-s`).value) || 0;
-    let mm = m + (s / 60);
-
-    const degPad = isLat ? 2 : 3;
-    document.getElementById(`${prefix}-dd`).value = String(d).padStart(degPad, "0");
-    let mmFixed = mm.toFixed(2);
-    let [mmInt, mmDec] = mmFixed.split(".");
-    document.getElementById(`${prefix}-dm`).value = mmInt.padStart(2, "0") + "." + mmDec;
-
+function triggerProjRecalc(prefix) {
     if (prefix.startsWith('po')) calcProjectorO();
     else if (prefix.startsWith('pa')) calcProjectorA();
     else if (prefix.startsWith('pb')) calcProjectorB();
+}
+
+function calcProjDMS(prefix, isLat) {
+    if (!validateProjCoordBox(prefix, isLat, 'dms')) {
+        triggerProjRecalc(prefix);
+        return;
+    }
+    const elD = document.getElementById(`${prefix}-d`);
+    const elM = document.getElementById(`${prefix}-m`);
+    const elS = document.getElementById(`${prefix}-s`);
+    const elDD = document.getElementById(`${prefix}-dd`);
+    const elDM = document.getElementById(`${prefix}-dm`);
+
+    let d = parseFloat(elD.value);
+    let m = parseFloat(elM.value);
+    let s = parseFloat(elS.value);
+
+    if (isNaN(d) && isNaN(m) && isNaN(s)) {
+        elDD.value = '';
+        elDM.value = '';
+        triggerProjRecalc(prefix);
+        return;
+    }
+
+    const degPad = isLat ? 2 : 3;
+    if (!isNaN(d)) elDD.value = String(d).padStart(degPad, "0");
+    if (!isNaN(m) || !isNaN(s)) {
+        if (isNaN(d)) elDD.value = String(0).padStart(degPad, "0");
+        let mm = (m || 0) + ((s || 0) / 60);
+        let mmFixed = mm.toFixed(2);
+        let [mmInt, mmDec] = mmFixed.split(".");
+        elDM.value = mmInt.padStart(2, "0") + "." + mmDec;
+    }
+
+    triggerProjRecalc(prefix);
 }
 
 function calcProjDMM(prefix, isLat) {
-    if (!validateProjCoordBox(prefix, isLat, 'dmm')) return;
-    let dStr = document.getElementById(`${prefix}-dd`).value;
-    let mmStr = document.getElementById(`${prefix}-dm`).value;
-    let d = parseFloat(dStr) || 0;
-    let mm = parseFloat(mmStr) || 0;
-    let m = Math.floor(mm);
-    let s = (mm - m) * 60;
+    if (!validateProjCoordBox(prefix, isLat, 'dmm')) {
+        triggerProjRecalc(prefix);
+        return;
+    }
+    const elD = document.getElementById(`${prefix}-d`);
+    const elM = document.getElementById(`${prefix}-m`);
+    const elS = document.getElementById(`${prefix}-s`);
+    const elDD = document.getElementById(`${prefix}-dd`);
+    const elDM = document.getElementById(`${prefix}-dm`);
 
-    const degPad = isLat ? 2 : 3;
-    if (dStr !== "" || mmStr !== "") {
-        document.getElementById(`${prefix}-d`).value = String(d).padStart(degPad, "0");
-        document.getElementById(`${prefix}-m`).value = String(m).padStart(2, "0");
-        let sFixed = s.toFixed(2);
-        let [sInt, sDec] = sFixed.split(".");
-        document.getElementById(`${prefix}-s`).value = sInt.padStart(2, "0") + "." + sDec;
+    let dStr = elDD.value;
+    let mmStr = elDM.value;
+    let d = parseFloat(dStr);
+    let mm = parseFloat(mmStr);
+
+    if (isNaN(d) && isNaN(mm)) {
+        elD.value = '';
+        elM.value = '';
+        elS.value = '';
+        triggerProjRecalc(prefix);
+        return;
     }
 
-    if (prefix.startsWith('po')) calcProjectorO();
-    else if (prefix.startsWith('pa')) calcProjectorA();
-    else if (prefix.startsWith('pb')) calcProjectorB();
+    const degPad = isLat ? 2 : 3;
+    if (!isNaN(d)) elD.value = String(d).padStart(degPad, "0");
+    if (!isNaN(mm)) {
+        if (isNaN(d)) elD.value = String(0).padStart(degPad, "0");
+        let m = Math.floor(mm);
+        let s = (mm - m) * 60;
+        elM.value = String(m).padStart(2, "0");
+        let sFixed = s.toFixed(2);
+        let [sInt, sDec] = sFixed.split(".");
+        elS.value = sInt.padStart(2, "0") + "." + sDec;
+    }
+
+    triggerProjRecalc(prefix);
 }
 
 function getDecimalDegFromPrefixLoose(prefix) {
-    let dstr = document.getElementById(`${prefix}-dd`).value;
+    const cbox = document.getElementById(`${prefix}-cbox`);
+    if (cbox && cbox.classList.contains('has-err')) return null;
+    let dstr = document.getElementById(`${prefix}-dd`).value || document.getElementById(`${prefix}-d`).value;
     let dmstr = document.getElementById(`${prefix}-dm`).value;
     if (!dstr && !dmstr) return null;
     return (parseFloat(dstr) || 0) + ((parseFloat(dmstr) || 0) / 60);
 }
 
 function calcProjectorO() {
+    const latBoxErr = document.getElementById('po1-lat-cbox')?.classList.contains('has-err');
+    const lonBoxErr = document.getElementById('po1-lon-cbox')?.classList.contains('has-err');
+    if (latBoxErr || lonBoxErr) {
+        ['proj-o-dist-nm', 'proj-o-dist-m', 'proj-o-dist-ft', 'proj-o-dist-km', 'proj-o-trk'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '--';
+        });
+        return;
+    }
     let latA = getDecimalDegFromPrefixLoose('po1-lat'), lonA = getDecimalDegFromPrefixLoose('po1-lon');
     if (latA === null && lonA === null) return;
     if (latA === null) latA = 0;
@@ -166,7 +216,9 @@ function calcProjectorO() {
 }
 
 function getDecimalDegFromPrefix(prefix) {
-    let dstr = document.getElementById(`${prefix}-dd`).value;
+    const cbox = document.getElementById(`${prefix}-cbox`);
+    if (cbox && cbox.classList.contains('has-err')) return null;
+    let dstr = document.getElementById(`${prefix}-dd`).value || document.getElementById(`${prefix}-d`).value;
     let dmstr = document.getElementById(`${prefix}-dm`).value;
     if (!dstr && !dmstr) return null;
     return (parseFloat(dstr) || 0) + ((parseFloat(dmstr) || 0) / 60);
@@ -369,6 +421,20 @@ function setRFInputMode(mode) {
 }
 
 function calcRFArc() {
+    if (document.getElementById('prf1-lat-cbox')?.classList.contains('has-err') ||
+        document.getElementById('prf1-lon-cbox')?.classList.contains('has-err')) {
+        notify('Please fix invalid Center Point coordinates (highlighted in red).', true);
+        return;
+    }
+    if (rfInputMode === 'waypoint' && (
+        document.getElementById('prfs-lat-cbox')?.classList.contains('has-err') ||
+        document.getElementById('prfs-lon-cbox')?.classList.contains('has-err') ||
+        document.getElementById('prfe-lat-cbox')?.classList.contains('has-err') ||
+        document.getElementById('prfe-lon-cbox')?.classList.contains('has-err')
+    )) {
+        notify('Please fix invalid Start / End Waypoint coordinates (highlighted in red).', true);
+        return;
+    }
     let centerLat = getDecimalDegFromPrefix('prf1-lat');
     let centerLon = getDecimalDegFromPrefix('prf1-lon');
     if (centerLat === null || centerLon === null) { notify('Enter center coordinate.'); return; }

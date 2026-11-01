@@ -288,15 +288,19 @@ function convertAngDMToDec(row) {
     if (!decEl || !dEl || !mEl) return;
     const d = parseFloat(dEl.value);
     const m = parseFloat(mEl.value);
-    if (isNaN(d)) { decEl.value = ''; return; }
-    const sign = d < 0 ? -1 : 1;
-    decEl.value = (sign * (Math.abs(d) + (isNaN(m) ? 0 : m) / 60)).toFixed(4);
+    const mBad = !isNaN(m) && (m < 0 || m >= 60);
+    mEl.classList.toggle('input-invalid', mBad);
+    if (mBad) { decEl.value = ''; return; }
+    if (isNaN(d) && isNaN(m)) { decEl.value = ''; return; }
+    const dVal = isNaN(d) ? 0 : d;
+    const sign = dVal < 0 ? -1 : 1;
+    decEl.value = (sign * (Math.abs(dVal) + (isNaN(m) ? 0 : m) / 60)).toFixed(4);
 }
 
 function clearAngRow(row) {
     ['ang-dec-', 'ang-d-', 'ang-m-'].forEach(prefix => {
         const el = document.getElementById(prefix + row);
-        if (el) el.value = '';
+        if (el) { el.value = ''; el.classList.remove('input-invalid'); }
     });
 }
 
