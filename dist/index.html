@@ -2018,7 +2018,11 @@ input.input-invalid {
                                         <div class="result-row"><span class="result-label">Linear Sensitivity (at THR)</span><span
                                                 id="locw-sens-lin" class="result-value c-amber">0.00145 DDM/m · 1.41 µA/m</span></div>
                                     </div>
-                                    <div class="section-label" style="margin-top:18px;">Sector Width at Distance <span class="opt">(from THR, outbound on approach)</span></div>
+                                    <div class="section-label" style="margin-top:18px;">Sector Width at Distance <span class="opt" id="locw-q-reflabel">(from RWY THR, outbound on approach)</span></div>
+                                    <div class="seg block" id="locw-q-ref" style="margin-bottom:12px;">
+                                        <button type="button" data-ref="thr" class="active c-amber" onclick="setLocQueryRef('thr')">From RWY THR</button>
+                                        <button type="button" data-ref="loc" class="c-cyan" onclick="setLocQueryRef('loc')">From LOC Antenna</button>
+                                    </div>
                                     <div class="fields c3">
                                         <div class="field"><label>Distance (m)</label>
                                             <div class="input-wrap"><input type="number" inputmode="decimal"
@@ -2055,12 +2059,14 @@ input.input-invalid {
                                         </div>
                                     </div>
                                     <div class="readout" style="margin-top:14px;">
+                                        <div class="result-row"><span class="result-label">Dist from RWY THR</span><span
+                                                id="locw-q-fromthr" class="result-value c-amber">--</span></div>
                                         <div class="result-row"><span class="result-label">Dist from LOC Antenna</span><span
-                                                id="locw-q-fromloc" class="result-value c-primary">--</span></div>
+                                                id="locw-q-fromloc" class="result-value c-cyan">--</span></div>
                                         <div class="result-row"><span class="result-label">Linear Sensitivity (at Dist)</span><span
                                                 id="locw-q-sens" class="result-value c-amber">--</span></div>
                                     </div>
-                                    <p class="panel-note" style="margin-top:10px;">Edge = full-scale deflection (±0.155 DDM / ±150 µA). Width grows linearly from the LOC antenna: half-width = 106.68 m × (D + d) / D. Negative distance = point between THR and the LOC antenna.</p>
+                                    <p class="panel-note" style="margin-top:10px;">Edge = full-scale deflection (±0.155 DDM / ±150 µA). Width grows linearly from the LOC antenna: half-width = 106.68 m × (D + d) / D. D = THR → LOC antenna, d = distance from THR. With "From RWY THR", a negative distance is a point between THR and the LOC antenna.</p>
                                 </div>
                             </div>
                             <div class="col">
@@ -6625,6 +6631,15 @@ function setLocSetbackFt(ftVal, btn) {
 }
 
 const M_PER_NM = 1852;
+let locQRef = 'thr'; // reference for the width-at-distance input: 'thr' or 'loc'
+
+function setLocQueryRef(ref) {
+    locQRef = ref === 'loc' ? 'loc' : 'thr';
+    document.querySelectorAll('#locw-q-ref button').forEach(b => b.classList.toggle('active', b.dataset.ref === locQRef));
+    const lbl = document.getElementById('locw-q-reflabel');
+    if (lbl) lbl.textContent = locQRef === 'loc' ? '(from LOC Antenna, outbound on approach)' : '(from RWY THR, outbound on approach)';
+    calcLocWidth('q-ref');
+}
 
 function setLocQueryNM(nm, btn) {
     const qm = document.getElementById('locw-q-m');
@@ -6656,18 +6671,19 @@ function calcLocQuery(src, totalM) {
         document.querySelectorAll('#locw-q-presets .preset-chip').forEach(b => b.classList.remove('active'));
     }
 
-    const ids = ['locw-q-full', 'locw-q-full-alt', 'locw-q-half', 'locw-q-half-alt', 'locw-q-fromloc', 'locw-q-sens'];
+    const ids = ['locw-q-full', 'locw-q-full-alt', 'locw-q-half', 'locw-q-half-alt', 'locw-q-fromthr', 'locw-q-fromloc', 'locw-q-sens'];
     const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
     const set = (id, t) => { if (el[id]) el[id].textContent = t; };
     const blank = () => {
         set('locw-q-full', '-- m'); set('locw-q-full-alt', '150 µA L ↔ 150 µA R');
         set('locw-q-half', '-- m'); set('locw-q-half-alt', '0.155 DDM / 150 µA');
-        set('locw-q-fromloc', '--'); set('locw-q-sens', '--');
+        set('locw-q-fromthr', '--'); set('locw-q-fromloc', '--'); set('locw-q-sens', '--');
     };
 
-    // Distance from THR (m); the metre field is the shared value (rounded to 1 m)
-    const dq = parseFloat(qm.value);
-    if (!(totalM > 0) || isNaN(dq)) { blank(); return NaN; }
+    // Entered distance (m, from the selected reference); the metre field is the shared value (rounded to 1 m)
+    const dIn = parseFloat(qm.value);
+    if (!(totalM > 0) || isNaN(dIn)) { blank(); return NaN; }
+    const dq = locQRef === 'loc' ? dIn - totalM : dIn; // distance from THR
 
     const fromLoc = totalM + dq;
     if (fromLoc <= 0) {
@@ -6682,6 +6698,7 @@ function calcLocQuery(src, totalM) {
     set('locw-q-full-alt', `${fmt(Math.round(fullM * FT_PER_M))} ft · ${(fullM / M_PER_NM).toFixed(3)} NM`);
     set('locw-q-half', `±${fmtLen(halfM)} m`);
     set('locw-q-half-alt', `±${fmt(Math.round(halfM * FT_PER_M))} ft · ±${(halfM / M_PER_NM).toFixed(3)} NM`);
+    set('locw-q-fromthr', `${fmt(Math.round(dq))} m  (${(dq / M_PER_NM).toFixed(2)} NM)`);
     set('locw-q-fromloc', `${fmt(Math.round(fromLoc))} m  (${(fromLoc / M_PER_NM).toFixed(2)} NM)`);
     set('locw-q-sens', `${(0.155 / halfM).toPrecision(3)} DDM/m · ${(150 / halfM).toPrecision(3)} µA/m`);
     return dq;
@@ -6690,6 +6707,10 @@ function calcLocQuery(src, totalM) {
 function resetLocWidth() {
     ['locw-q-m', 'locw-q-ft', 'locw-q-nm'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
     document.querySelectorAll('#locw-q-presets .preset-chip').forEach(b => b.classList.remove('active'));
+    locQRef = 'thr';
+    document.querySelectorAll('#locw-q-ref button').forEach(b => b.classList.toggle('active', b.dataset.ref === 'thr'));
+    const qLbl = document.getElementById('locw-q-reflabel');
+    if (qLbl) qLbl.textContent = '(from RWY THR, outbound on approach)';
     const rmEl = document.getElementById('locw-rwy-m');
     const rftEl = document.getElementById('locw-rwy-ft');
     const smEl = document.getElementById('locw-set-m');
@@ -6887,8 +6908,9 @@ function drawLocWidthViz(rwyM, setM, totalM, thetaDeg, dq) {
     if (hasQ) {
         const fullM = 2 * LOC_HALF_WIDTH_M * (totalM + dq) / totalM;
         const wTxt = fullM >= 1000 ? fmt(Math.round(fullM)) : fullM.toFixed(1);
-        V.pill(ctx, `W = ${wTxt} m @ ${(dq / M_PER_NM).toFixed(2)} NM`, Math.max(xQ, padL + 70), yAtX(xQ, -1) - 10,
-            { align: 'center', color: V.c('--violet'), size: 10.5 });
+        const dRef = locQRef === 'loc' ? totalM + dq : dq;
+        V.pill(ctx, `W = ${wTxt} m (${(fullM / M_PER_NM).toFixed(3)} NM) @ ${(dRef / M_PER_NM).toFixed(2)} NM ${locQRef === 'loc' ? 'LOC' : 'THR'}`, xQ < w / 2 ? Math.max(4, xQ - 24) : Math.min(w - 4, xQ + 24), yAtX(xQ, -1) - 10,
+            { align: xQ < w / 2 ? 'left' : 'right', color: V.c('--violet'), size: 10.5 });
     }
     V.pill(ctx, `LOC`, xLoc, cy - 18, { align: 'center', color: V.c('--cyan'), size: 10 });
     if (!V.labelsHidden(ctx)) {

@@ -1257,7 +1257,11 @@
                                         <div class="result-row"><span class="result-label">Linear Sensitivity (at THR)</span><span
                                                 id="locw-sens-lin" class="result-value c-amber">0.00145 DDM/m · 1.41 µA/m</span></div>
                                     </div>
-                                    <div class="section-label" style="margin-top:18px;">Sector Width at Distance <span class="opt">(from THR, outbound on approach)</span></div>
+                                    <div class="section-label" style="margin-top:18px;">Sector Width at Distance <span class="opt" id="locw-q-reflabel">(from RWY THR, outbound on approach)</span></div>
+                                    <div class="seg block" id="locw-q-ref" style="margin-bottom:12px;">
+                                        <button type="button" data-ref="thr" class="active c-amber" onclick="setLocQueryRef('thr')">From RWY THR</button>
+                                        <button type="button" data-ref="loc" class="c-cyan" onclick="setLocQueryRef('loc')">From LOC Antenna</button>
+                                    </div>
                                     <div class="fields c3">
                                         <div class="field"><label>Distance (m)</label>
                                             <div class="input-wrap"><input type="number" inputmode="decimal"
@@ -1294,12 +1298,14 @@
                                         </div>
                                     </div>
                                     <div class="readout" style="margin-top:14px;">
+                                        <div class="result-row"><span class="result-label">Dist from RWY THR</span><span
+                                                id="locw-q-fromthr" class="result-value c-amber">--</span></div>
                                         <div class="result-row"><span class="result-label">Dist from LOC Antenna</span><span
-                                                id="locw-q-fromloc" class="result-value c-primary">--</span></div>
+                                                id="locw-q-fromloc" class="result-value c-cyan">--</span></div>
                                         <div class="result-row"><span class="result-label">Linear Sensitivity (at Dist)</span><span
                                                 id="locw-q-sens" class="result-value c-amber">--</span></div>
                                     </div>
-                                    <p class="panel-note" style="margin-top:10px;">Edge = full-scale deflection (±0.155 DDM / ±150 µA). Width grows linearly from the LOC antenna: half-width = 106.68 m × (D + d) / D. Negative distance = point between THR and the LOC antenna.</p>
+                                    <p class="panel-note" style="margin-top:10px;">Edge = full-scale deflection (±0.155 DDM / ±150 µA). Width grows linearly from the LOC antenna: half-width = 106.68 m × (D + d) / D. D = THR → LOC antenna, d = distance from THR. With "From RWY THR", a negative distance is a point between THR and the LOC antenna.</p>
                                 </div>
                             </div>
                             <div class="col">
