@@ -1138,7 +1138,37 @@ function bindFsplHover() {
     c.addEventListener('pointerleave', () => { _fsplHoverX = null; redraw(); });
 }
 
+let _signalNoticeShown = false;
+function showSignalDevNotice() {
+    let modal = document.getElementById('signal-dev-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'signal-dev-modal';
+        modal.className = 'dev-modal-backdrop';
+        modal.innerHTML = `
+            <div class="dev-modal-card">
+                <div class="dev-modal-icon">!</div>
+                <div class="dev-modal-title">Under Development</div>
+                <div class="dev-modal-msg">This <b>Signal (FSPL)</b> tab is currently under development. The present calculations might not be correct.</div>
+                <div class="dev-modal-hint">Tap anywhere to continue</div>
+            </div>`;
+        modal.addEventListener('click', () => modal.classList.remove('open'));
+        document.body.appendChild(modal);
+    }
+    requestAnimationFrame(() => modal.classList.add('open'));
+}
+
 App.register('vor', {
+    onPane(pane) {
+        if (pane === 'signal') {
+            if (!_signalNoticeShown) {
+                _signalNoticeShown = true;
+                showSignalDevNotice();
+            }
+        } else {
+            _signalNoticeShown = false;
+        }
+    },
     onShow(pane) {
         if (pane === 'orbit' || !pane) { calculateVOR(); calcVorTime(); drawVorCompass(); }
         if (pane === 'pred') drawPredCompass();
