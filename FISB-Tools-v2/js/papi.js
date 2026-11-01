@@ -301,9 +301,12 @@ function clearAngRow(row) {
 }
 
 // =========================================================
-// Visualisation (2D Clean Side-Profile + Dedicated Light Bar)
+// Visualisation (2D Clean Side-Profile + 3D View + Dedicated Light Bar)
 // =========================================================
+let papiView = '2d';
+let papiScene = null;
 let _papiLastCA = null;
+const PAPI_UNIT_FROM_THR = 300;  // m (illustrative)
 const PAPI_VIEW_RANGE = 1500;    // m from units shown on approach
 
 function getPapiState() {
@@ -332,6 +335,14 @@ function papiVerdict(lights) {
     return ['LOW', 'SLIGHTLY LOW', 'ON SLOPE', 'SLIGHTLY HIGH', 'HIGH'][w];
 }
 
+function setPapiView(v) {
+    papiView = v;
+    setSegActive(document.querySelector('#tab-papi .panel-head .seg'), 'view', v);
+    document.getElementById('papi-2d-wrap').classList.toggle('hidden', v !== '2d');
+    document.getElementById('papi-3d-wrap').classList.toggle('hidden', v !== '3d');
+    updatePapiViz();
+}
+
 let _papiVizRaf = null;
 function updatePapiViz() {
     if (_papiVizRaf) return;
@@ -350,6 +361,7 @@ function _updatePapiViz() {
         hud.querySelectorAll('.lamp').forEach(l => l.className = 'lamp');
         hudTxt.textContent = '--';
         if (title) title.textContent = 'Approach Profile';
+        if (papiScene) { papiScene.clear(); papiScene.requestRender(); }
         drawPapiFan(null);
         return;
     }
@@ -365,7 +377,77 @@ function _updatePapiViz() {
     hudTxt.textContent = `${papiVerdict(lights)} · ${acft.toFixed(2)}°`;
     if (title) title.textContent = `${st.ident} · CA ${st.ca.toFixed(2)}°`;
 
-    drawPapiFan(st, acft, lights);
+    if (papiView === '3d') buildPapi3D(st, acft, lights);
+    else drawPapiFan(st, acft, lights);
+}
+
+function buildPapi3D(st, acft, lights) {
+    const host = document.getElementById('papi-3d');
+    if (!papiScene) {
+        if (host.dataset.loading) return;
+        host.dataset.loading = '1';
+        host.innerHTML = '<div class="viz-empty"><div>Loading 3D…</div></div>';
+        loadThree().then(() => {
+            delete host.dataset.loading;
+            papiScene = new Scene3D(host);
+            papiScene.onTheme = () => updatePapiViz();
+            papiScene.setView({ az: -0.62, el: 0.24, dist: 1150, target: new THREE.Vector3(-30, 170, 700), minDist: 40, maxDist: 8000 });
+            updatePapiViz();
+        }).catch(() => { delete host.dataset.loading; show3DError(host); setPapiView('2d'); });
+        return;
+    }
+    const S = papiScene, E = 4;
+    S.clear();
+    const T = THREE;
+    const isLight = document.body.classList.contains('light-theme');
+
+    const ground = new T.Mesh(new T.PlaneGeometry(30000, 30000), M3.mat(isLight ? '#b9c7ae' : '#16211a', { roughness: 1, side: T.FrontSide }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.5, 0);
+    S.add(ground);
+    S.add(M3.grid(8000, 80, isLight ? '#8a98a8' : '#2c3a4e', 0.35));
+    S.add(M3.runway(2400, 45, { thick: 0.4 }));
+    S.label(st.ident, new T.Vector3(0, 2, 30), 'plain');
+
+    const zU = -PAPI_UNIT_FROM_THR;
+    const unitX = i => -(22.5 + 15 + (3 - i) * 9);
+    const lampCol = l => l === 'w' ? '#fffbe8' : '#ff3b3b';
+    for (let i = 0; i < 4; i++) {
+        const x = unitX(i);
+        const box = new T.Mesh(new T.BoxGeometry(6, 3, 4), M3.mat('#3d4552', { roughness: 0.6 }));
+        box.position.set(x, 1.5, zU); S.add(box);
+        const lamp = new T.Mesh(new T.CircleGeometry(1.3, 20), M3.basic(lampCol(lights[i])));
+        lamp.position.set(x, 1.8, zU + 2.05); S.add(lamp);
+        const glow = M3.sphere([x, 1.8, zU + 2.4], 2.2, lampCol(lights[i]), { transparent: true, opacity: 0.35 });
+        S.add(glow);
+    }
+    S.label('PAPI ≈300 m', new T.Vector3(unitX(1.5), 8, zU), 'plain');
+
+    const zEnd = zU + PAPI_VIEW_RANGE;
+    const boxCols = ['#f87171', '#f5b942', '#34d399', '#4f8cff'];
+    const naming = { AEROTHAI: ['Box 1', 'Box 2', 'Box 3', 'Box 4'], ICAO: ['A', 'B', 'C', 'D'], FAA: ['#4', '#3', '#2', '#1'] }[st.naming];
+    // Exaggerate angular spread between boxes in 3D too so beams are clearly separated
+    const effAngle = a => Math.max(0.4, st.ca + (a - st.ca) * 2.6);
+    st.angles.forEach((a, i) => {
+        const hEnd = PAPI_VIEW_RANGE * Math.tan(effAngle(a) * Math.PI / 180) * E;
+        const x = unitX(i);
+        S.add(M3.poly([[x - 14, 1.8, zU], [x + 14, 1.8, zU], [x + 14, hEnd, zEnd], [x - 14, hEnd, zEnd]], boxCols[i], 0.12));
+        S.add(M3.line([[x, 1.8, zU], [x, hEnd, zEnd]], boxCols[i], { opacity: 0.95 }));
+        const f = [1.0, 0.82, 0.64, 0.46][i];
+        S.label(`${naming[i]} ${a.toFixed(2)}°`, new T.Vector3(x, 1.8 + (hEnd - 1.8) * f, zU + PAPI_VIEW_RANGE * f), '');
+    });
+    const hCA = PAPI_VIEW_RANGE * Math.tan(st.ca * Math.PI / 180) * E;
+    S.add(M3.line([[unitX(1.5), 1.8, zU], [unitX(1.5), hCA, zEnd + 200]], '#22d3ee', { dash: 25, gap: 18 }));
+
+    const dA = PAPI_VIEW_RANGE - 120;
+    const hA = dA * Math.tan(effAngle(acft) * Math.PI / 180) * E;
+    const ac = M3.aircraft(isLight ? '#ffffff' : '#e8edf5', '#4f8cff', 70);
+    ac.position.set(unitX(1.5) + 45, hA, zU + dA);
+    ac.rotation.x = Math.atan(Math.tan(st.ca * Math.PI / 180) * E) * 0.9;
+    S.add(ac);
+    S.add(M3.line([[unitX(1.5) + 45, hA, zU + dA], [unitX(1.5), 1.8, zU]], '#a78bfa', { dash: 14, gap: 10, opacity: 0.8 }));
+    S.add(M3.line([[unitX(1.5) + 45, hA, zU + dA], [unitX(1.5) + 45, 0, zU + dA]], '#8391a7', { dash: 8, gap: 8, opacity: 0.7 }));
+    S.label(`ACFT ${acft.toFixed(2)}° · ${papiVerdict(lights)}`, new T.Vector3(unitX(1.5) + 45, hA + 110, zU + dA), 'primary');
+    S.requestRender();
 }
 
 function drawPapiFan(st, acft, lights) {
@@ -479,5 +561,6 @@ App.register('papi', {
     onShow(pane) {
         if (pane === 'config' || !pane) updatePapiViz();
         if (pane === 'ref') syncReferenceGuide(lastEditedPapiId);
+        if (papiScene) papiScene.resize();
     }
 });

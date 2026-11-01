@@ -41,6 +41,8 @@ class Scene3D {
 
         this.labelLayer = document.createElement('div');
         this.labelLayer.className = 'labels';
+        this.labelsVisible = opts.labelsVisible !== false;
+        if (!this.labelsVisible) this.labelLayer.classList.add('hidden');
         host.appendChild(this.labelLayer);
 
         this.scene = new T.Scene();
@@ -95,6 +97,14 @@ class Scene3D {
         const d = this.defaultView;
         this.az = d.az; this.el = d.el; this.dist = d.dist; this.target.copy(d.target);
         this.requestRender();
+    }
+    toggleLabels(btn) {
+        this.labelsVisible = !this.labelsVisible;
+        this.labelLayer.classList.toggle('hidden', !this.labelsVisible);
+        if (btn) {
+            btn.classList.toggle('active', this.labelsVisible);
+            btn.textContent = this.labelsVisible ? 'Hide Labels' : 'Show Labels';
+        }
     }
 
     // ---------- Content ----------
