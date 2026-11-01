@@ -164,6 +164,16 @@ function calcVorTime() {
 // ===== PREDICTION CARD =====
 let predDirection = 'cw';
 
+function setPredNow() {
+    const now = new Date();
+    const hh = now.getUTCHours().toString().padStart(2, '0');
+    const mm = now.getUTCMinutes().toString().padStart(2, '0');
+    const el = document.getElementById('pred-startTime');
+    if (el) el.value = `${hh}:${mm}`;
+    calcTimeToRadial();
+    calcRadialFromTime();
+}
+
 function setPredDir(dir) {
     predDirection = dir;
     const cwBtn = document.getElementById('pred-dir-cw');
@@ -174,12 +184,7 @@ function setPredDir(dir) {
     ccwBtn.classList.toggle('ccw', dir === 'ccw');
 
     // Set current time when direction is selected
-    const now = new Date();
-    const hh = now.getUTCHours().toString().padStart(2, '0');
-    const mm = now.getUTCMinutes().toString().padStart(2, '0');
-    document.getElementById('pred-startTime').value = `${hh}:${mm}`;
-    calcTimeToRadial();
-    calcRadialFromTime();
+    setPredNow();
 }
 
 function updatePrediction() {

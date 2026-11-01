@@ -344,18 +344,18 @@ function _updatePapiViz() {
     const slider = document.getElementById('papi-acft-angle');
     const hud = document.getElementById('papi-hud');
     const hudTxt = document.getElementById('papi-hud-txt');
-    const sub = document.getElementById('papi-viz-sub');
+    const title = document.getElementById('papi-viz-title');
 
     if (!st || st.empty) {
         hud.querySelectorAll('.lamp').forEach(l => l.className = 'lamp');
         hudTxt.textContent = '--';
-        if (sub) sub.textContent = '';
+        if (title) title.textContent = 'Approach Profile';
         drawPapiFan(null);
         return;
     }
     // slider range / follow CA changes
-    slider.min = Math.max(0.3, st.angles[0] - 1.5).toFixed(2);
-    slider.max = (st.angles[3] + 1.5).toFixed(2);
+    slider.min = Math.max(0.3, st.angles[0] - 1.0).toFixed(2);
+    slider.max = (st.angles[3] + 1.0).toFixed(2);
     if (_papiLastCA !== st.ca) { slider.value = st.ca; _papiLastCA = st.ca; }
     const acft = parseFloat(slider.value);
     document.getElementById('papi-acft-angle-val').textContent = acft.toFixed(2) + '°';
@@ -363,7 +363,7 @@ function _updatePapiViz() {
     const lights = papiLights(st, acft);
     hud.querySelectorAll('.lamp').forEach((l, i) => l.className = 'lamp ' + lights[i]);
     hudTxt.textContent = `${papiVerdict(lights)} · ${acft.toFixed(2)}°`;
-    if (sub) sub.textContent = `${st.ident} · CA ${st.ca.toFixed(2)}°`;
+    if (title) title.textContent = `${st.ident} · CA ${st.ca.toFixed(2)}°`;
 
     drawPapiFan(st, acft, lights);
 }
@@ -375,76 +375,61 @@ function drawPapiFan(st, acft, lights) {
         V.el(s.el, 'text', { x: s.w / 2, y: s.h / 2, 'text-anchor': 'middle', fill: V.c('--muted'), 'font-size': 13 }, 'Enter a commissioning angle');
         return;
     }
-    const padL = 36, padR = 94, padT = 16, padB = 30;
+    const padL = 20, padR = 96, padT = 16, padB = 30;
     const maxD = PAPI_VIEW_RANGE;
-    // Set vertical range generously so a 3° glidepath has a gentle ~18°-22° visual slope
-    const maxAng = Math.max(st.angles[3] * 1.65, acft + 0.5);
-    const maxH = maxD * Math.tan(maxAng * Math.PI / 180);
-    const X = d => padL + d / maxD * (s.w - padL - padR);
-    const Y = hm => s.h - padB - hm / maxH * (s.h - padT - padB);
+    const plotW = s.w - padL - padR;
+    const plotH = s.h - padT - padB;
+    const X = d => padL + (d / maxD) * plotW;
+    const yBase = s.h - padB;
+
+    // Schematic angular exaggeration around CA:
+    // Center (CA) sits at 50% height (gentle ~22° visual slope), while the spread
+    // between Box 1 and Box 4 is exaggerated to span ~18%..82% of plotH (~34px between each box!)
+    const ang = st.angles;
+    const halfSpread = Math.max(0.25, (ang[3] - ang[0]) / 2);
+    const angleToFrac = a => 0.50 + ((a - st.ca) / halfSpread) * 0.32;
+    const YAtEnd = a => yBase - Math.max(0.04, Math.min(0.96, angleToFrac(a))) * plotH;
+    const YAtDist = (d, a) => yBase - (d / maxD) * (yBase - YAtEnd(a));
 
     // Subtle shaded zones (below Box 1 = red, on-slope Box 2..3 = cyan, above Box 4 = white)
-    const ang = st.angles;
-    const zone = (a0, a1, col, op) => {
-        const p = [[0, 0], [maxD, maxD * Math.tan(a0 * Math.PI / 180)], [maxD, maxD * Math.tan(a1 * Math.PI / 180)]];
-        V.el(s.el, 'path', { d: `M${X(p[0][0])} ${Y(p[0][1])} L${X(p[1][0])} ${Y(p[1][1])} L${X(p[2][0])} ${Y(p[2][1])} Z`, fill: col, 'fill-opacity': op });
+    const zone = (yEnd0, yEnd1, col, op) => {
+        V.el(s.el, 'path', { d: `M${X(0)} ${yBase} L${X(maxD)} ${yEnd0} L${X(maxD)} ${yEnd1} Z`, fill: col, 'fill-opacity': op });
     };
-    zone(0, ang[0], '#ef4444', 0.12);
-    zone(ang[1], ang[2], '#22d3ee', 0.14);
-    zone(ang[3], maxAng, '#f8fafc', 0.06);
+    zone(yBase, YAtEnd(ang[0]), '#ef4444', 0.13);
+    zone(YAtEnd(ang[1]), YAtEnd(ang[2]), '#22d3ee', 0.16);
+    zone(YAtEnd(ang[3]), padT, '#f8fafc', 0.06);
 
-    // Grid
-    const stepH = V.niceStep(maxH, 3);
-    for (let hm = 0; hm <= maxH; hm += stepH) {
-        V.el(s.el, 'line', { x1: padL, x2: s.w - padR, y1: Y(hm), y2: Y(hm), stroke: V.c('--viz-grid') });
-        V.el(s.el, 'text', { x: padL - 6, y: Y(hm), 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10, 'font-family': "'JetBrains Mono', monospace" }, Math.round(hm));
-    }
-    const dStep = (s.w - padL - padR) < 210 ? 500 : 250;
+    // Distance grid
+    const dStep = plotW < 210 ? 500 : 250;
     for (let d = 0; d <= maxD; d += dStep) {
-        V.el(s.el, 'text', { x: X(d), y: s.h - padB + 15, 'text-anchor': 'middle', fill: V.c('--muted'), 'font-size': 10, 'font-family': "'JetBrains Mono', monospace" }, d);
+        if (d > 0) V.el(s.el, 'line', { x1: X(d), x2: X(d), y1: padT, y2: yBase, stroke: V.c('--viz-grid'), 'stroke-dasharray': '3 3' });
+        V.el(s.el, 'text', { x: X(d), y: yBase + 15, 'text-anchor': 'middle', fill: V.c('--muted'), 'font-size': 10, 'font-family': "'JetBrains Mono', monospace" }, d);
     }
     V.el(s.el, 'text', { x: s.w - padR, y: s.h - 3, 'text-anchor': 'end', fill: V.c('--muted'), 'font-size': 10 }, 'Dist from PAPI (m)');
-    V.el(s.el, 'text', { x: 8, y: 12, fill: V.c('--muted'), 'font-size': 10 }, 'm');
-    V.el(s.el, 'line', { x1: padL, x2: s.w - padR, y1: Y(0), y2: Y(0), stroke: V.c('--viz-axis'), 'stroke-width': 1.5 });
+    V.el(s.el, 'line', { x1: padL, x2: s.w - padR, y1: yBase, y2: yBase, stroke: V.c('--viz-axis'), 'stroke-width': 1.5 });
 
-    // 4 Box transition lines + collision-free right-margin labels
+    // 4 Box transition lines + right-margin labels
     const boxCols = [V.c('--red'), V.c('--amber'), V.c('--green'), V.c('--primary')];
     const naming = { AEROTHAI: ['Box 1', 'Box 2', 'Box 3', 'Box 4'], ICAO: ['A', 'B', 'C', 'D'], FAA: ['#4', '#3', '#2', '#1'] }[st.naming];
-    const endYs = ang.map(a => Y(maxD * Math.tan(a * Math.PI / 180)));
-
-    // Ensure right-margin labels are at least 14px apart vertically (ordered top to bottom: Box 4 -> Box 1)
-    const lblYs = endYs.slice();
-    const minGap = 14;
-    for (let pass = 0; pass < 4; pass++) {
-        for (let i = 3; i > 0; i--) {
-            // i is higher angle (smaller Y) than i-1
-            if (lblYs[i - 1] - lblYs[i] < minGap) {
-                const mid = (lblYs[i - 1] + lblYs[i]) / 2;
-                lblYs[i] = mid - minGap / 2;
-                lblYs[i - 1] = mid + minGap / 2;
-            }
-        }
-    }
+    const endYs = ang.map(a => YAtEnd(a));
 
     ang.forEach((a, i) => {
         const yEnd = endYs[i];
-        const yLbl = lblYs[i];
-        V.el(s.el, 'line', { x1: X(0), y1: Y(0), x2: X(maxD), y2: yEnd, stroke: boxCols[i], 'stroke-width': 1.8 });
-        // Small leader tick from beam end to label Y
-        V.el(s.el, 'line', { x1: X(maxD), y1: yEnd, x2: X(maxD) + 5, y2: yLbl, stroke: boxCols[i], 'stroke-width': 1, 'stroke-opacity': 0.7 });
-        V.el(s.el, 'text', { x: X(maxD) + 7, y: yLbl, 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
+        V.el(s.el, 'line', { x1: X(0), y1: yBase, x2: X(maxD), y2: yEnd, stroke: boxCols[i], 'stroke-width': 2 });
+        V.el(s.el, 'text', { x: X(maxD) + 7, y: yEnd, 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
     });
 
-    // Aircraft approach ray & clean aircraft icon (no overlapping text or light circles)
-    const dA = maxD * 0.80, hA = dA * Math.tan(acft * Math.PI / 180);
-    const xA = X(dA), yA = Math.max(padT + 4, Math.min(Y(0) - 4, Y(hA)));
-    V.el(s.el, 'line', { x1: X(0), y1: Y(0), x2: xA, y2: yA, stroke: V.c('--violet'), 'stroke-dasharray': '5 4', 'stroke-width': 1.8 });
-    const pitch = Math.atan2(Y(0) - yA, X(0) - xA) * 180 / Math.PI - 180;
-    const g = V.el(s.el, 'g', { transform: `translate(${xA} ${yA}) rotate(${pitch}) scale(-0.9 0.9)` });
+    // Aircraft approach ray & clean aircraft icon along the same exaggerated angular scale
+    const dA = maxD * 0.78;
+    const xA = X(dA), yA = YAtDist(dA, acft);
+    V.el(s.el, 'line', { x1: X(0), y1: yBase, x2: xA, y2: yA, stroke: V.c('--violet'), 'stroke-dasharray': '5 4', 'stroke-width': 2 });
+    const pitch = Math.atan2(yBase - yA, X(0) - xA) * 180 / Math.PI - 180;
+    const g = V.el(s.el, 'g', { transform: `translate(${xA} ${yA}) rotate(${pitch}) scale(-0.95 0.95)` });
     V.el(g, 'path', { d: 'M-14 0 L10 -2 L14 0 L10 2 Z M-2 -1 L-6 -9 L-3 -9 L4 -1 Z M-12 -1 L-15 -6 L-13 -6 L-9 -1 Z', fill: V.c('--text') });
 
-    // PAPI origin marker
-    V.el(s.el, 'rect', { x: X(0) - 4, y: Y(0) - 4, width: 8, height: 8, rx: 2, fill: V.c('--amber') });
+    // PAPI origin marker & Runway Ident
+    V.el(s.el, 'rect', { x: X(0) - 5, y: yBase - 5, width: 10, height: 10, rx: 2, fill: V.c('--amber') });
+    V.el(s.el, 'text', { x: X(0) + 8, y: padT + 6, fill: V.c('--muted'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${st.ident} · CA ${st.ca.toFixed(2)}°`);
 }
 
 // Plan-view box reference (replaces v1 canvases papi1Canvas / papi2Canvas)
@@ -459,28 +444,31 @@ function syncReferenceGuide(id) {
     const color = (mode === 'ils') ? V.c('--amber') : V.c('--green');
     document.getElementById('papi-ref-info').textContent = `${idText} · ${mode === 'ils' ? 'PAPI with ILS' : 'PAPI'}`;
 
-    const padX = 26;
-    const rwyY = s.h * 0.62, rwyH = Math.min(60, s.h * 0.18);
+    const padX = 16;
+    const rwyY = s.h * 0.64, rwyH = Math.min(64, Math.max(52, s.h * 0.20));
     V.el(s.el, 'rect', { x: padX, y: rwyY, width: s.w - 2 * padX, height: rwyH, rx: 4, fill: '#2b313b', stroke: '#4b5563' });
-    for (let x = padX + 110; x < s.w - padX - 30; x += 46) V.el(s.el, 'rect', { x, y: rwyY + rwyH / 2 - 1.5, width: 26, height: 3, fill: '#e5e7eb' });
-    for (let i = 0; i < 6; i++) V.el(s.el, 'rect', { x: padX + 10, y: rwyY + 6 + i * (rwyH - 12) / 6, width: 30, height: (rwyH - 12) / 6 - 3, fill: '#e5e7eb' });
-    V.el(s.el, 'text', { x: padX + 66, y: rwyY + rwyH / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#fff', 'font-weight': 800, 'font-size': 15, 'font-family': "'JetBrains Mono', monospace", transform: `rotate(-90 ${padX + 66} ${rwyY + rwyH / 2})` }, idText);
+    for (let x = padX + 108; x < s.w - padX - 24; x += 44) V.el(s.el, 'rect', { x, y: rwyY + rwyH / 2 - 1.5, width: 24, height: 3, fill: '#e5e7eb' });
+    for (let i = 0; i < 6; i++) V.el(s.el, 'rect', { x: padX + 8, y: rwyY + 6 + i * (rwyH - 12) / 6, width: 26, height: (rwyH - 12) / 6 - 3, fill: '#e5e7eb' });
+    // Draw RWY identifier horizontally or compactly so 4 chars (e.g. RW03) are always 100% visible
+    V.el(s.el, 'text', { x: padX + 68, y: rwyY + rwyH / 2, 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#fff', 'font-weight': 800, 'font-size': idText.length > 3 ? 12.5 : 14, 'font-family': "'JetBrains Mono', monospace", transform: `rotate(-90 ${padX + 68} ${rwyY + rwyH / 2})` }, idText);
 
     const names = { AEROTHAI: ['Box 1', 'Box 2', 'Box 3', 'Box 4'], ICAO: ['A', 'B', 'C', 'D'], FAA: ['#4', '#3', '#2', '#1'] };
-    const bx = padX + 150, bs = 22, gap = 12;
+    const bs = 22, gap = 11;
+    const bx = Math.min(padX + 130, Math.max(padX + 76, s.w - 210));
+    const colStep = Math.min(62, Math.max(46, (s.w - (bx + bs + 12) - 10) / 3));
     for (let i = 0; i < 4; i++) {
-        const y = rwyY - 18 - bs - (3 - i) * (bs + gap);
+        const y = rwyY - 16 - bs - (3 - i) * (bs + gap);
         V.el(s.el, 'rect', { x: bx, y, width: bs, height: bs, rx: 4, fill: color });
         let tx = bx + bs + 12;
         ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => {
             V.el(s.el, 'text', { x: tx, y: y + bs / 2, 'dominant-baseline': 'central', fill: n === naming ? V.c('--text') : V.c('--muted'), 'font-size': 12, 'font-weight': n === naming ? 800 : 500, 'font-family': "'JetBrains Mono', monospace" }, names[n][i]);
-            tx += 64;
+            tx += colStep;
         });
     }
     let tx = bx + bs + 12;
-    ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => { V.el(s.el, 'text', { x: tx, y: 16, fill: n === naming ? V.c('--primary') : V.c('--muted'), 'font-size': 10, 'font-weight': 700 }, n); tx += 64; });
-    V.el(s.el, 'text', { x: bx - 10, y: rwyY - 18 - bs - 3 * (bs + gap) + bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'away ↑');
-    V.el(s.el, 'text', { x: bx - 10, y: rwyY - 18 - bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'close ↓');
+    ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => { V.el(s.el, 'text', { x: tx, y: 16, fill: n === naming ? V.c('--primary') : V.c('--muted'), 'font-size': 10, 'font-weight': 700 }, n); tx += colStep; });
+    V.el(s.el, 'text', { x: bx - 8, y: rwyY - 16 - bs - 3 * (bs + gap) + bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'away ↑');
+    V.el(s.el, 'text', { x: bx - 8, y: rwyY - 16 - bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'close ↓');
     V.el(s.el, 'text', { x: s.w / 2, y: s.h - 12, 'text-anchor': 'middle', fill: V.c('--text'), 'font-size': 13, 'font-weight': 700 }, 'LANDING DIRECTION →');
 }
 

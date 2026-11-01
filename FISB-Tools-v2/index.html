@@ -320,8 +320,7 @@
                             <div class="col sticky-col">
                                 <div class="panel">
                                     <div class="panel-head">
-                                        <h2 id="papi-viz-title">Approach Profile</h2>
-                                        <span class="head-info" id="papi-viz-sub"></span>
+                                        <h2 id="papi-viz-title" style="white-space:nowrap;">Approach Profile</h2>
                                         <span class="spacer"></span>
                                     </div>
                                     <div class="panel-body">
@@ -487,20 +486,22 @@
                                         </div>
                                     </div>
                                     <div class="section-label" style="margin-top:16px;">Direction &amp; Time</div>
-                                    <div class="inline-row">
-                                        <div class="seg"><button id="dir-cw" class="active cw"
-                                                onclick="setVorDir('cw')">↻ CW</button><button id="dir-ccw"
-                                                onclick="setVorDir('ccw')">↺ CCW</button></div>
-                                        <div class="grow inline-row" style="justify-content:flex-end;">
-                                            <span class="field-label">Start (UTC)</span>
-                                            <input type="text" inputmode="numeric" id="vor-startTime"
-                                                placeholder="HH:MM" maxlength="5" class="center mono compact"
-                                                style="width:84px;" oninput="formatTimeInput(this)">
-                                            <button class="btn sm success" onclick="calcVorTime()">Update</button>
-                                            <button class="btn sm ghost" onclick="setVorNow()"
-                                                title="Set start time to now (UTC)"><svg class="i sm">
-                                                    <use href="#ic-clock" />
-                                                </svg></button>
+                                    <div class="fields">
+                                        <div class="field">
+                                            <label>Direction</label>
+                                            <div class="seg block" style="height:44px;">
+                                                <button id="dir-cw" class="active cw" onclick="setVorDir('cw')">↻ CW</button>
+                                                <button id="dir-ccw" onclick="setVorDir('ccw')">↺ CCW</button>
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <label class="inline-row" style="justify-content:space-between;">Start (UTC) <button type="button" class="btn xs ghost" onclick="setVorNow()" title="Set start time to now (UTC)"><svg class="i sm"><use href="#ic-clock" /></svg>Now</button></label>
+                                            <div class="inline-row" style="flex-wrap:nowrap; gap:6px;">
+                                                <input type="text" inputmode="numeric" id="vor-startTime"
+                                                    placeholder="HH:MM" maxlength="5" class="center mono"
+                                                    style="flex:1; min-width:0; padding:0 6px;" oninput="formatTimeInput(this); calcVorTime();">
+                                                <button class="btn sm success" style="height:44px; padding:0 12px; flex-shrink:0;" onclick="calcVorTime()">Update</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="inline-row"
@@ -609,17 +610,23 @@
                                         </div>
                                     </div>
                                     <div class="section-label" style="margin-top:16px;">Direction &amp; Time</div>
-                                    <div class="inline-row">
-                                        <div class="seg"><button id="pred-dir-cw" class="active cw"
-                                                onclick="setPredDir('cw')">↻ CW</button><button id="pred-dir-ccw"
-                                                onclick="setPredDir('ccw')">↺ CCW</button></div>
-                                        <div class="grow inline-row" style="justify-content:flex-end;">
-                                            <span class="field-label">Start (UTC)</span>
-                                            <input type="text" inputmode="numeric" id="pred-startTime"
-                                                placeholder="HH:MM" maxlength="5" class="center mono compact"
-                                                style="width:84px;" oninput="formatTimeInput(this)">
-                                            <button class="btn sm success"
-                                                onclick="calcTimeToRadial(); calcRadialFromTime();">Update</button>
+                                    <div class="fields">
+                                        <div class="field">
+                                            <label>Direction</label>
+                                            <div class="seg block" style="height:44px;">
+                                                <button id="pred-dir-cw" class="active cw" onclick="setPredDir('cw')">↻ CW</button>
+                                                <button id="pred-dir-ccw" onclick="setPredDir('ccw')">↺ CCW</button>
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <label class="inline-row" style="justify-content:space-between;">Start (UTC) <button type="button" class="btn xs ghost" onclick="setPredNow()" title="Set start time to now (UTC)"><svg class="i sm"><use href="#ic-clock" /></svg>Now</button></label>
+                                            <div class="inline-row" style="flex-wrap:nowrap; gap:6px;">
+                                                <input type="text" inputmode="numeric" id="pred-startTime"
+                                                    placeholder="HH:MM" maxlength="5" class="center mono"
+                                                    style="flex:1; min-width:0; padding:0 6px;" oninput="formatTimeInput(this); calcTimeToRadial(); calcRadialFromTime();">
+                                                <button class="btn sm success" style="height:44px; padding:0 12px; flex-shrink:0;"
+                                                    onclick="calcTimeToRadial(); calcRadialFromTime();">Update</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="section-label" style="margin-top:18px;">Calculate</div>
