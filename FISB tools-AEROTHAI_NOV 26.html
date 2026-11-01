@@ -975,49 +975,30 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
                             <div class="col sticky-col">
                                 <div class="panel">
                                     <div class="panel-head">
-                                        <h2 id="papi-viz-title">Approach View</h2><span class="spacer"></span>
-                                        <div class="seg"><button data-view="3d" class="active"
-                                                onclick="setPapiView('3d')"><svg class="i sm">
-                                                    <use href="#ic-cube" />
-                                                </svg>3D</button><button data-view="2d"
-                                                onclick="setPapiView('2d')">Side</button></div>
+                                        <h2 id="papi-viz-title">Approach Profile</h2>
+                                        <span class="head-info" id="papi-viz-sub"></span>
+                                        <span class="spacer"></span>
                                     </div>
                                     <div class="panel-body">
-                                        <div class="viz" id="papi-3d-wrap">
-                                            <div class="scene3d" id="papi-3d"></div>
-                                            <div class="scene-hud">
-                                                <div class="papi-lights" id="papi-hud">
-                                                    <div class="lamp"></div>
-                                                    <div class="lamp"></div>
-                                                    <div class="lamp"></div>
-                                                    <div class="lamp"></div><span class="txt"
-                                                        id="papi-hud-txt">--</span>
-                                                </div>
+                                        <div class="papi-lights" id="papi-hud" style="width:100%; justify-content:space-between; margin-bottom:10px; box-sizing:border-box;">
+                                            <div style="display:flex; gap:10px; align-items:center;">
+                                                <div class="lamp"></div>
+                                                <div class="lamp"></div>
+                                                <div class="lamp"></div>
+                                                <div class="lamp"></div>
                                             </div>
-                                            <div class="viz-toolbar">
-                                                <div class="seg" id="papi-exag"><button
-                                                        onclick="setPapiExag(1)">×1</button><button class="active"
-                                                        onclick="setPapiExag(4)">×4</button><button
-                                                        onclick="setPapiExag(10)">×10</button></div>
-                                                <button class="btn icon sm" title="Reset view"
-                                                    onclick="papiScene && papiScene.resetView()"><svg class="i sm">
-                                                        <use href="#ic-recenter" />
-                                                    </svg></button>
-                                            </div>
-                                            <div class="scene-hint">Drag to orbit · pinch / scroll to zoom</div>
+                                            <span class="txt" id="papi-hud-txt">--</span>
                                         </div>
-                                        <div class="viz hidden" id="papi-2d-wrap"><svg id="papi-fan" width="100%"
-                                                height="360"></svg></div>
-                                        <div style="margin-top:14px;">
+                                        <div class="viz" id="papi-2d-wrap"><svg id="papi-fan" width="100%"
+                                                height="210"></svg></div>
+                                        <div style="margin-top:12px;">
                                             <div class="field-label" style="margin-bottom:6px;">Aircraft approach angle
                                             </div>
                                             <div class="range-row"><input type="range" class="range"
                                                     id="papi-acft-angle" min="1" max="6" step="0.01" value="3"
                                                     oninput="updatePapiViz()"><span class="val"
                                                     id="papi-acft-angle-val">3.00°</span></div>
-                                            <p class="panel-note" style="margin:6px 0 0;">Lights shown as seen by the
-                                                pilot, outboard (Box 1) on the left. White = aircraft above that box's
-                                                transition angle.</p>
+                                            <p class="panel-note" style="margin:6px 0 0;">Outboard (Box 1) on left. White = aircraft above box transition angle.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -4303,13 +4284,9 @@ function clearAngRow(row) {
 }
 
 // =========================================================
-// Visualisation
+// Visualisation (2D Clean Side-Profile + Dedicated Light Bar)
 // =========================================================
-let papiView = '3d';
-let papiExag = 4;
-let papiScene = null;
 let _papiLastCA = null;
-const PAPI_UNIT_FROM_THR = 300;  // m (illustrative)
 const PAPI_VIEW_RANGE = 1500;    // m from units shown on approach
 
 function getPapiState() {
@@ -4338,19 +4315,6 @@ function papiVerdict(lights) {
     return ['LOW', 'SLIGHTLY LOW', 'ON SLOPE', 'SLIGHTLY HIGH', 'HIGH'][w];
 }
 
-function setPapiView(v) {
-    papiView = v;
-    setSegActive(document.querySelector('#tab-papi .panel-head .seg'), 'view', v);
-    document.getElementById('papi-3d-wrap').classList.toggle('hidden', v !== '3d');
-    document.getElementById('papi-2d-wrap').classList.toggle('hidden', v !== '2d');
-    updatePapiViz();
-}
-function setPapiExag(e) {
-    papiExag = e;
-    document.querySelectorAll('#papi-exag button').forEach(b => b.classList.toggle('active', b.textContent === '×' + e));
-    updatePapiViz();
-}
-
 let _papiVizRaf = null;
 function updatePapiViz() {
     if (_papiVizRaf) return;
@@ -4363,13 +4327,12 @@ function _updatePapiViz() {
     const slider = document.getElementById('papi-acft-angle');
     const hud = document.getElementById('papi-hud');
     const hudTxt = document.getElementById('papi-hud-txt');
-    const title = document.getElementById('papi-viz-title');
+    const sub = document.getElementById('papi-viz-sub');
 
     if (!st || st.empty) {
         hud.querySelectorAll('.lamp').forEach(l => l.className = 'lamp');
         hudTxt.textContent = '--';
-        title.textContent = 'Approach View';
-        if (papiScene) { papiScene.clear(); papiScene.requestRender(); }
+        if (sub) sub.textContent = '';
         drawPapiFan(null);
         return;
     }
@@ -4382,83 +4345,10 @@ function _updatePapiViz() {
 
     const lights = papiLights(st, acft);
     hud.querySelectorAll('.lamp').forEach((l, i) => l.className = 'lamp ' + lights[i]);
-    hudTxt.textContent = papiVerdict(lights);
-    title.textContent = `${st.ident} · ${st.mode === 'ils' ? 'PAPI with ILS' : 'PAPI'} · CA ${st.ca.toFixed(2)}°`;
+    hudTxt.textContent = `${papiVerdict(lights)} · ${acft.toFixed(2)}°`;
+    if (sub) sub.textContent = `${st.ident} · CA ${st.ca.toFixed(2)}°`;
 
-    if (papiView === '2d') drawPapiFan(st, acft, lights);
-    else buildPapi3D(st, acft, lights);
-}
-
-function buildPapi3D(st, acft, lights) {
-    const host = document.getElementById('papi-3d');
-    if (!papiScene) {
-        if (host.dataset.loading) return;
-        host.dataset.loading = '1';
-        host.innerHTML = '<div class="viz-empty"><div>Loading 3D…</div></div>';
-        loadThree().then(() => {
-            delete host.dataset.loading;
-            papiScene = new Scene3D(host);
-            papiScene.onTheme = () => updatePapiViz();
-            papiScene.setView({ az: -0.62, el: 0.24, dist: 1150, target: new THREE.Vector3(-30, 170, 700), minDist: 40, maxDist: 8000 });
-            updatePapiViz();
-        }).catch(() => { delete host.dataset.loading; show3DError(host); setPapiView('2d'); });
-        return;
-    }
-    const S = papiScene, E = papiExag;
-    S.clear();
-    const T = THREE;
-    const isLight = document.body.classList.contains('light-theme');
-
-    // ground & runway
-    const ground = new T.Mesh(new T.PlaneGeometry(30000, 30000), M3.mat(isLight ? '#b9c7ae' : '#16211a', { roughness: 1, side: T.FrontSide }));
-    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -0.5, 0);
-    S.add(ground);
-    S.add(M3.grid(8000, 80, isLight ? '#8a98a8' : '#2c3a4e', 0.35));
-    S.add(M3.runway(2400, 45, { thick: 0.4 }));
-    S.label(st.ident, new T.Vector3(0, 2, 30), 'plain');
-
-    // PAPI units (enlarged ×3 for visibility)
-    const zU = -PAPI_UNIT_FROM_THR;
-    const unitX = i => -(22.5 + 15 + (3 - i) * 9);
-    const lampCol = l => l === 'w' ? '#fffbe8' : '#ff3b3b';
-    for (let i = 0; i < 4; i++) {
-        const x = unitX(i);
-        const box = new T.Mesh(new T.BoxGeometry(6, 3, 4), M3.mat('#3d4552', { roughness: 0.6 }));
-        box.position.set(x, 1.5, zU); S.add(box);
-        const lamp = new T.Mesh(new T.CircleGeometry(1.3, 20), M3.basic(lampCol(lights[i])));
-        lamp.position.set(x, 1.8, zU + 2.05); S.add(lamp);
-        const glow = M3.sphere([x, 1.8, zU + 2.4], 2.2, lampCol(lights[i]), { transparent: true, opacity: 0.35 });
-        S.add(glow);
-    }
-    S.label('PAPI ≈300 m', new T.Vector3(unitX(1.5), 8, zU), 'plain');
-
-    // transition planes
-    const zEnd = zU + PAPI_VIEW_RANGE;
-    const boxCols = ['#f87171', '#f5b942', '#34d399', '#4f8cff'];
-    const naming = { AEROTHAI: ['Box 1', 'Box 2', 'Box 3', 'Box 4'], ICAO: ['A', 'B', 'C', 'D'], FAA: ['#4', '#3', '#2', '#1'] }[st.naming];
-    st.angles.forEach((a, i) => {
-        const hEnd = PAPI_VIEW_RANGE * Math.tan(a * Math.PI / 180) * E;
-        const x = unitX(i);
-        S.add(M3.poly([[x - 14, 1.8, zU], [x + 14, 1.8, zU], [x + 14, hEnd, zEnd], [x - 14, hEnd, zEnd]], boxCols[i], 0.12));
-        S.add(M3.line([[x, 1.8, zU], [x, hEnd, zEnd]], boxCols[i], { opacity: 0.95 }));
-        const f = [1.0, 0.84, 0.68, 0.52][i]; // stagger labels along the beams
-        S.label(`${naming[i]} ${a.toFixed(2)}°`, new T.Vector3(x, 1.8 + (hEnd - 1.8) * f, zU + PAPI_VIEW_RANGE * f), '');
-    });
-    // nominal CA
-    const hCA = PAPI_VIEW_RANGE * Math.tan(st.ca * Math.PI / 180) * E;
-    S.add(M3.line([[unitX(1.5), 1.8, zU], [unitX(1.5), hCA, zEnd + 200]], '#22d3ee', { dash: 25, gap: 18 }));
-
-    // aircraft
-    const dA = PAPI_VIEW_RANGE - 120;
-    const hA = dA * Math.tan(acft * Math.PI / 180) * E;
-    const ac = M3.aircraft(isLight ? '#ffffff' : '#e8edf5', '#4f8cff', 70);
-    ac.position.set(unitX(1.5) + 45, hA, zU + dA);
-    ac.rotation.x = Math.atan(Math.tan(acft * Math.PI / 180) * E) * 0.9;
-    S.add(ac);
-    S.add(M3.line([[unitX(1.5) + 45, hA, zU + dA], [unitX(1.5), 1.8, zU]], '#a78bfa', { dash: 14, gap: 10, opacity: 0.8 }));
-    S.add(M3.line([[unitX(1.5) + 45, hA, zU + dA], [unitX(1.5) + 45, 0, zU + dA]], '#8391a7', { dash: 8, gap: 8, opacity: 0.7 }));
-    S.label(`ACFT ${acft.toFixed(2)}° · ${papiVerdict(lights)}`, new T.Vector3(unitX(1.5) + 45, hA + 110, zU + dA), 'primary');
-    S.requestRender();
+    drawPapiFan(st, acft, lights);
 }
 
 function drawPapiFan(st, acft, lights) {
@@ -4468,57 +4358,76 @@ function drawPapiFan(st, acft, lights) {
         V.el(s.el, 'text', { x: s.w / 2, y: s.h / 2, 'text-anchor': 'middle', fill: V.c('--muted'), 'font-size': 13 }, 'Enter a commissioning angle');
         return;
     }
-    const padL = 48, padR = 110, padT = 20, padB = 36;
+    const padL = 36, padR = 94, padT = 16, padB = 30;
     const maxD = PAPI_VIEW_RANGE;
-    const maxAng = st.angles[3] + 1.2;
+    // Set vertical range generously so a 3° glidepath has a gentle ~18°-22° visual slope
+    const maxAng = Math.max(st.angles[3] * 1.65, acft + 0.5);
     const maxH = maxD * Math.tan(maxAng * Math.PI / 180);
     const X = d => padL + d / maxD * (s.w - padL - padR);
     const Y = hm => s.h - padB - hm / maxH * (s.h - padT - padB);
 
-    // red / white zones
+    // Subtle shaded zones (below Box 1 = red, on-slope Box 2..3 = cyan, above Box 4 = white)
     const ang = st.angles;
     const zone = (a0, a1, col, op) => {
         const p = [[0, 0], [maxD, maxD * Math.tan(a0 * Math.PI / 180)], [maxD, maxD * Math.tan(a1 * Math.PI / 180)]];
         V.el(s.el, 'path', { d: `M${X(p[0][0])} ${Y(p[0][1])} L${X(p[1][0])} ${Y(p[1][1])} L${X(p[2][0])} ${Y(p[2][1])} Z`, fill: col, 'fill-opacity': op });
     };
-    zone(0, ang[0], '#ef4444', 0.16);
-    zone(ang[3], maxAng, '#f8fafc', 0.10);
-    zone(ang[1], ang[2], '#22d3ee', 0.10);
+    zone(0, ang[0], '#ef4444', 0.12);
+    zone(ang[1], ang[2], '#22d3ee', 0.14);
+    zone(ang[3], maxAng, '#f8fafc', 0.06);
 
-    // grid
-    const stepH = V.niceStep(maxH, 4);
+    // Grid
+    const stepH = V.niceStep(maxH, 3);
     for (let hm = 0; hm <= maxH; hm += stepH) {
         V.el(s.el, 'line', { x1: padL, x2: s.w - padR, y1: Y(hm), y2: Y(hm), stroke: V.c('--viz-grid') });
         V.el(s.el, 'text', { x: padL - 6, y: Y(hm), 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10, 'font-family': "'JetBrains Mono', monospace" }, Math.round(hm));
     }
-    for (let d = 0; d <= maxD; d += 250) {
-        V.el(s.el, 'text', { x: X(d), y: s.h - padB + 16, 'text-anchor': 'middle', fill: V.c('--muted'), 'font-size': 10, 'font-family': "'JetBrains Mono', monospace" }, d);
+    const dStep = (s.w - padL - padR) < 210 ? 500 : 250;
+    for (let d = 0; d <= maxD; d += dStep) {
+        V.el(s.el, 'text', { x: X(d), y: s.h - padB + 15, 'text-anchor': 'middle', fill: V.c('--muted'), 'font-size': 10, 'font-family': "'JetBrains Mono', monospace" }, d);
     }
-    V.el(s.el, 'text', { x: s.w - padR, y: s.h - 6, 'text-anchor': 'end', fill: V.c('--muted'), 'font-size': 10.5 }, 'Distance from PAPI (m)');
-    V.el(s.el, 'text', { x: 8, y: padT - 6, fill: V.c('--muted'), 'font-size': 10.5 }, 'm');
+    V.el(s.el, 'text', { x: s.w - padR, y: s.h - 3, 'text-anchor': 'end', fill: V.c('--muted'), 'font-size': 10 }, 'Dist from PAPI (m)');
+    V.el(s.el, 'text', { x: 8, y: 12, fill: V.c('--muted'), 'font-size': 10 }, 'm');
     V.el(s.el, 'line', { x1: padL, x2: s.w - padR, y1: Y(0), y2: Y(0), stroke: V.c('--viz-axis'), 'stroke-width': 1.5 });
 
+    // 4 Box transition lines + collision-free right-margin labels
     const boxCols = [V.c('--red'), V.c('--amber'), V.c('--green'), V.c('--primary')];
     const naming = { AEROTHAI: ['Box 1', 'Box 2', 'Box 3', 'Box 4'], ICAO: ['A', 'B', 'C', 'D'], FAA: ['#4', '#3', '#2', '#1'] }[st.naming];
+    const endYs = ang.map(a => Y(maxD * Math.tan(a * Math.PI / 180)));
+
+    // Ensure right-margin labels are at least 14px apart vertically (ordered top to bottom: Box 4 -> Box 1)
+    const lblYs = endYs.slice();
+    const minGap = 14;
+    for (let pass = 0; pass < 4; pass++) {
+        for (let i = 3; i > 0; i--) {
+            // i is higher angle (smaller Y) than i-1
+            if (lblYs[i - 1] - lblYs[i] < minGap) {
+                const mid = (lblYs[i - 1] + lblYs[i]) / 2;
+                lblYs[i] = mid - minGap / 2;
+                lblYs[i - 1] = mid + minGap / 2;
+            }
+        }
+    }
+
     ang.forEach((a, i) => {
-        const hEnd = maxD * Math.tan(a * Math.PI / 180);
-        V.el(s.el, 'line', { x1: X(0), y1: Y(0), x2: X(maxD), y2: Y(hEnd), stroke: boxCols[i], 'stroke-width': 2 });
-        V.el(s.el, 'text', { x: X(maxD) + 8, y: Y(hEnd), 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
+        const yEnd = endYs[i];
+        const yLbl = lblYs[i];
+        V.el(s.el, 'line', { x1: X(0), y1: Y(0), x2: X(maxD), y2: yEnd, stroke: boxCols[i], 'stroke-width': 1.8 });
+        // Small leader tick from beam end to label Y
+        V.el(s.el, 'line', { x1: X(maxD), y1: yEnd, x2: X(maxD) + 5, y2: yLbl, stroke: boxCols[i], 'stroke-width': 1, 'stroke-opacity': 0.7 });
+        V.el(s.el, 'text', { x: X(maxD) + 7, y: yLbl, 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
     });
-    // aircraft
-    const dA = maxD * 0.82, hA = dA * Math.tan(acft * Math.PI / 180);
-    V.el(s.el, 'line', { x1: X(0), y1: Y(0), x2: X(dA), y2: Y(hA), stroke: V.c('--violet'), 'stroke-dasharray': '5 5', 'stroke-width': 1.5 });
-    // nose toward the PAPI / runway (left), pitched down along the approach path
-    const pitch = Math.atan2(Y(0) - Y(hA), X(0) - X(dA)) * 180 / Math.PI - 180;
-    const g = V.el(s.el, 'g', { transform: `translate(${X(dA)} ${Y(hA)}) rotate(${pitch}) scale(-1 1)` });
+
+    // Aircraft approach ray & clean aircraft icon (no overlapping text or light circles)
+    const dA = maxD * 0.80, hA = dA * Math.tan(acft * Math.PI / 180);
+    const xA = X(dA), yA = Math.max(padT + 4, Math.min(Y(0) - 4, Y(hA)));
+    V.el(s.el, 'line', { x1: X(0), y1: Y(0), x2: xA, y2: yA, stroke: V.c('--violet'), 'stroke-dasharray': '5 4', 'stroke-width': 1.8 });
+    const pitch = Math.atan2(Y(0) - yA, X(0) - xA) * 180 / Math.PI - 180;
+    const g = V.el(s.el, 'g', { transform: `translate(${xA} ${yA}) rotate(${pitch}) scale(-0.9 0.9)` });
     V.el(g, 'path', { d: 'M-14 0 L10 -2 L14 0 L10 2 Z M-2 -1 L-6 -9 L-3 -9 L4 -1 Z M-12 -1 L-15 -6 L-13 -6 L-9 -1 Z', fill: V.c('--text') });
-    // lights at the PAPI origin as seen
-    lights.forEach((l, i) => {
-        V.el(s.el, 'circle', { cx: X(dA) - 30 + i * 20, cy: Y(hA) - 26, r: 7, fill: l === 'w' ? '#fffbe8' : '#ff3b3b', stroke: V.c('--border-strong') });
-    });
-    V.el(s.el, 'text', { x: X(dA), y: Y(hA) + 22, 'text-anchor': 'middle', fill: V.c('--violet'), 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${acft.toFixed(2)}° ${papiVerdict(lights)}`);
-    V.el(s.el, 'rect', { x: X(0) - 5, y: Y(0) - 5, width: 10, height: 10, rx: 2, fill: V.c('--amber') });
-    V.el(s.el, 'text', { x: X(0) + 8, y: Y(0) - 10, fill: V.c('--muted'), 'font-size': 10.5 }, 'PAPI');
+
+    // PAPI origin marker
+    V.el(s.el, 'rect', { x: X(0) - 4, y: Y(0) - 4, width: 8, height: 8, rx: 2, fill: V.c('--amber') });
 }
 
 // Plan-view box reference (replaces v1 canvases papi1Canvas / papi2Canvas)
@@ -4565,7 +4474,6 @@ App.register('papi', {
     onShow(pane) {
         if (pane === 'config' || !pane) updatePapiViz();
         if (pane === 'ref') syncReferenceGuide(lastEditedPapiId);
-        if (papiScene) papiScene.resize();
     }
 });
 
