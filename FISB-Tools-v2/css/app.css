@@ -381,7 +381,8 @@ body.light-theme .seg > button.active { background: #fff; box-shadow: 0 1px 3px 
 .badge.red { color: var(--red); border-color: rgba(248, 113, 113, 0.4); background: var(--red-soft); }
 .badge.green { color: var(--green); border-color: rgba(52, 211, 153, 0.4); background: var(--green-soft); }
 
-.morse { font-family: var(--mono); font-weight: 700; color: var(--primary); letter-spacing: 3px; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.morse { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-weight: 700; color: var(--primary); letter-spacing: 2px; min-width: 0; }
+.morse-ltr { white-space: nowrap; }
 
 /* ---------- Tables ---------- */
 .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }

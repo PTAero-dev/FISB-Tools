@@ -403,7 +403,8 @@ body.light-theme .seg > button.active { background: #fff; box-shadow: 0 1px 3px 
 .badge.red { color: var(--red); border-color: rgba(248, 113, 113, 0.4); background: var(--red-soft); }
 .badge.green { color: var(--green); border-color: rgba(52, 211, 153, 0.4); background: var(--green-soft); }
 
-.morse { font-family: var(--mono); font-weight: 700; color: var(--primary); letter-spacing: 3px; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.morse { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-weight: 700; color: var(--primary); letter-spacing: 2px; min-width: 0; }
+.morse-ltr { white-space: nowrap; }
 
 /* ---------- Tables ---------- */
 .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
@@ -1656,14 +1657,14 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
                                     </div>
                                     <div class="panel-body">
                                         <div class="inline-row"
-                                            style="padding:10px 12px; border-radius:12px; background:var(--field); border:1px solid var(--border); flex-wrap:nowrap;">
-                                            <div class="field" style="width:110px; flex-shrink:0;"><label>ILS
+                                            style="padding:10px 12px; border-radius:12px; background:var(--field); border:1px solid var(--border); flex-wrap:nowrap; gap:8px;">
+                                            <div class="field" style="width:84px; flex-shrink:0;"><label>ILS
                                                     Ident</label><input type="text" id="val-ils-id" maxlength="4"
-                                                    class="input-upper compact"
+                                                    class="input-upper compact center"
                                                     oninput="this.value=this.value.toUpperCase(); updateILSMorse(this.value); autoTab(this, 4, 'val-ils-thre'); drawILSCov()">
                                             </div>
                                             <div id="ils-morse" class="morse grow"
-                                                style="font-size:20px; text-align:right;"></div>
+                                                style="font-size:18px;"></div>
                                             <button class="btn icon sm ghost" title="Play ident"
                                                 onclick="playMorse(document.getElementById('val-ils-id').value)"><svg
                                                     class="i sm">
@@ -1708,7 +1709,7 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
                             <div class="col">
                                 <div class="panel">
                                     <div class="panel-head">
-                                        <h2>Approach View</h2><span class="spacer"></span>
+                                        <h2 style="white-space:nowrap;">Approach</h2><span class="spacer"></span>
                                         <div class="seg"><button data-view="2d" class="active"
                                                 onclick="setIlsView('2d')">Profile</button><button data-view="3d"
                                                 onclick="setIlsView('3d')"><svg class="i sm">
@@ -4617,11 +4618,11 @@ function setVorDir(dir) {
 function updateVorMorse(ident) {
     const morseEl = document.getElementById('vor-morse');
     if (!morseEl) return;
-    let code = "";
+    let html = "";
     for (let char of ident.toUpperCase()) {
-        if (MORSE_CODE[char]) code += MORSE_CODE[char] + "   "; // 3 spaces between chars
+        if (MORSE_CODE[char]) html += `<span class="morse-ltr">${MORSE_CODE[char]}</span>`;
     }
-    morseEl.textContent = code;
+    morseEl.innerHTML = html;
 }
 
 function setVorNow() {
@@ -5750,11 +5751,11 @@ function updateILSMorse(ident) {
     const morseEl = document.getElementById('ils-morse');
     const minInfoEl = document.getElementById('ils-min-info');
     if (!morseEl) return;
-    let code = "";
+    let html = "";
     for (let char of ident.toUpperCase()) {
-        if (MORSE_CODE[char]) code += MORSE_CODE[char] + "   ";
+        if (MORSE_CODE[char]) html += `<span class="morse-ltr">${MORSE_CODE[char]}</span>`;
     }
-    morseEl.textContent = code;
+    morseEl.innerHTML = html;
     if (minInfoEl) minInfoEl.innerText = "";
 }
 

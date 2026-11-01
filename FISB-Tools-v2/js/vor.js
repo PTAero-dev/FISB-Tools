@@ -24,11 +24,11 @@ function setVorDir(dir) {
 function updateVorMorse(ident) {
     const morseEl = document.getElementById('vor-morse');
     if (!morseEl) return;
-    let code = "";
+    let html = "";
     for (let char of ident.toUpperCase()) {
-        if (MORSE_CODE[char]) code += MORSE_CODE[char] + "   "; // 3 spaces between chars
+        if (MORSE_CODE[char]) html += `<span class="morse-ltr">${MORSE_CODE[char]}</span>`;
     }
-    morseEl.textContent = code;
+    morseEl.innerHTML = html;
 }
 
 function setVorNow() {

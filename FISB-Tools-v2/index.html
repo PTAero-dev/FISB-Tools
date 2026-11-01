@@ -999,14 +999,14 @@
                                     </div>
                                     <div class="panel-body">
                                         <div class="inline-row"
-                                            style="padding:10px 12px; border-radius:12px; background:var(--field); border:1px solid var(--border); flex-wrap:nowrap;">
-                                            <div class="field" style="width:110px; flex-shrink:0;"><label>ILS
+                                            style="padding:10px 12px; border-radius:12px; background:var(--field); border:1px solid var(--border); flex-wrap:nowrap; gap:8px;">
+                                            <div class="field" style="width:84px; flex-shrink:0;"><label>ILS
                                                     Ident</label><input type="text" id="val-ils-id" maxlength="4"
-                                                    class="input-upper compact"
+                                                    class="input-upper compact center"
                                                     oninput="this.value=this.value.toUpperCase(); updateILSMorse(this.value); autoTab(this, 4, 'val-ils-thre'); drawILSCov()">
                                             </div>
                                             <div id="ils-morse" class="morse grow"
-                                                style="font-size:20px; text-align:right;"></div>
+                                                style="font-size:18px;"></div>
                                             <button class="btn icon sm ghost" title="Play ident"
                                                 onclick="playMorse(document.getElementById('val-ils-id').value)"><svg
                                                     class="i sm">
@@ -1051,7 +1051,7 @@
                             <div class="col">
                                 <div class="panel">
                                     <div class="panel-head">
-                                        <h2>Approach View</h2><span class="spacer"></span>
+                                        <h2 style="white-space:nowrap;">Approach</h2><span class="spacer"></span>
                                         <div class="seg"><button data-view="2d" class="active"
                                                 onclick="setIlsView('2d')">Profile</button><button data-view="3d"
                                                 onclick="setIlsView('3d')"><svg class="i sm">

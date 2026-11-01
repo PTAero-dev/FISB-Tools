@@ -5,11 +5,11 @@ function updateILSMorse(ident) {
     const morseEl = document.getElementById('ils-morse');
     const minInfoEl = document.getElementById('ils-min-info');
     if (!morseEl) return;
-    let code = "";
+    let html = "";
     for (let char of ident.toUpperCase()) {
-        if (MORSE_CODE[char]) code += MORSE_CODE[char] + "   ";
+        if (MORSE_CODE[char]) html += `<span class="morse-ltr">${MORSE_CODE[char]}</span>`;
     }
-    morseEl.textContent = code;
+    morseEl.innerHTML = html;
     if (minInfoEl) minInfoEl.innerText = "";
 }
 
