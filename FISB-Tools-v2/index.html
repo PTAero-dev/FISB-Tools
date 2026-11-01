@@ -1184,6 +1184,93 @@
                         </div>
                     </div>
 
+                    <div class="pane" data-pane="locwidth" data-label="LOC Width">
+                        <div class="workbench">
+                            <div class="panel">
+                                <div class="panel-head">
+                                    <h2>LOC Course Width <span class="sub">ICAO Annex 10</span></h2><span class="spacer"></span>
+                                    <button class="btn sm danger-ghost"
+                                        onclick="resetLocWidth()"><svg class="i sm">
+                                            <use href="#ic-reset" />
+                                        </svg>Reset</button>
+                                </div>
+                                <div class="panel-body">
+                                    <p class="panel-note">ICAO Annex 10 standard course width sets full-scale deflection (±0.155 DDM / ±150 µA) at ±106.7 m (±350 ft) from centreline at the threshold (total gate 213.4 m / 700 ft).</p>
+                                    <div class="section-label">Runway Length</div>
+                                    <div class="fields">
+                                        <div class="field"><label>Length (Meters)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-rwy-m" placeholder="e.g. 3000" step="1"
+                                                    oninput="calcLocWidth('rwy-m')"><span class="unit">m</span></div>
+                                        </div>
+                                        <div class="field"><label>Length (Feet)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-rwy-ft" placeholder="e.g. 9843" step="1"
+                                                    oninput="calcLocWidth('rwy-ft')"><span class="unit">ft</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="section-label" style="margin-top:16px;">LOC Antenna Setback <span class="opt">(from Stop End)</span></div>
+                                    <div class="fields">
+                                        <div class="field"><label>Setback (Meters)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-set-m" value="0" placeholder="0" step="1"
+                                                    oninput="calcLocWidth('set-m')"><span class="unit">m</span></div>
+                                        </div>
+                                        <div class="field"><label>Setback (Feet)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-set-ft" value="0" placeholder="0" step="1"
+                                                    oninput="calcLocWidth('set-ft')"><span class="unit">ft</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="preset-chips" id="locw-presets">
+                                        <button type="button" class="preset-chip active" onclick="setLocSetbackM(0, this)">0 m (THR→LOC = RWY)</button>
+                                        <button type="button" class="preset-chip" onclick="setLocSetbackM(180, this)">+180 m (600 ft)</button>
+                                        <button type="button" class="preset-chip" onclick="setLocSetbackM(300, this)">+300 m (984 ft)</button>
+                                        <button type="button" class="preset-chip" onclick="setLocSetbackFt(1000, this)">+1,000 ft (305 m)</button>
+                                    </div>
+                                    <div class="stats" style="margin-top:16px;">
+                                        <div class="stat hero t-cyan">
+                                            <div class="k">Course Width (θ)</div>
+                                            <div class="v" id="locw-theta">-- °</div>
+                                            <div class="s" id="locw-theta-dms">Full Sector (150 µA – 150 µA)</div>
+                                        </div>
+                                        <div class="stat hero t-green">
+                                            <div class="k">Half Sector (±θ/2)</div>
+                                            <div class="v" id="locw-half">-- °</div>
+                                            <div class="s" id="locw-status">Enter runway length</div>
+                                        </div>
+                                    </div>
+                                    <div class="readout" style="margin-top:14px;">
+                                        <div class="result-row"><span class="result-label">Total Dist (THR → LOC)</span><span
+                                                id="locw-total-dist" class="result-value c-primary">--</span></div>
+                                        <div class="result-row"><span class="result-label">Threshold Gate (±350 ft)</span><span
+                                                id="locw-gate" class="result-value">213.36 m / 700 ft</span></div>
+                                        <div class="result-row"><span class="result-label">Angular Sensitivity</span><span
+                                                id="locw-sens-deg" class="result-value c-cyan">--</span></div>
+                                        <div class="result-row"><span class="result-label">Linear Sensitivity (at THR)</span><span
+                                                id="locw-sens-lin" class="result-value c-amber">0.00145 DDM/m · 1.41 µA/m</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="panel">
+                                    <div class="panel-head">
+                                        <h2>Course Sector Geometry</h2>
+                                    </div>
+                                    <div class="panel-body">
+                                        <div class="viz"><canvas id="locWidthCanvas" style="height:210px;"></canvas>
+                                            <div class="viz-empty" id="locw-empty">
+                                                <div><svg class="i">
+                                                        <use href="#ic-ils" />
+                                                    </svg>Enter runway length in m or ft</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="pane" data-pane="ddm" data-label="DDM ↔ µA">
                         <div class="panel" style="max-width:760px;">
                             <div class="panel-head">
@@ -1196,7 +1283,7 @@
                                 <p class="panel-note">Convert DDM (Difference in Depth of Modulation) to / from µA. Dots
                                     mark 30 µA steps up to full-scale 150 µA.</p>
                                 <div class="ddm-block">
-                                    <div class="ddm-head"><b class="c-primary">LOCALIZER</b><span class="badge">FSD
+                                    <div class="ddm-head"><b class="c-primary">LOCALIZER (Horizontal CDI)</b><span class="badge">FSD
                                             0.155 DDM = 150 µA</span></div>
                                     <div class="fields">
                                         <div class="field"><label>DDM</label><input type="number" inputmode="decimal"
@@ -1215,23 +1302,31 @@
                                     <div class="ddm-axis"><span>−150 µA</span><span>0</span><span>+150 µA</span></div>
                                 </div>
                                 <div class="ddm-block">
-                                    <div class="ddm-head"><b class="c-amber">GLIDESLOPE</b><span class="badge">FSD 0.175
+                                    <div class="ddm-head"><b class="c-amber">GLIDESLOPE (Vertical CDI)</b><span class="badge">FSD 0.175
                                             DDM = 150 µA</span></div>
-                                    <div class="fields">
-                                        <div class="field"><label>DDM</label><input type="number" inputmode="decimal"
-                                                id="ddm-gs-ddm" placeholder="0.000" step="0.001" class="center mono"
-                                                oninput="convertDDM('gs','ddm')"></div>
-                                        <div class="field"><label>µA</label><input type="number" inputmode="decimal"
-                                                id="ddm-gs-ua" placeholder="0.0" step="0.1" class="center mono"
-                                                oninput="convertDDM('gs','ua')"></div>
+                                    <div class="ddm-gs-layout">
+                                        <div class="ddm-gs-inputs">
+                                            <div class="field"><label>DDM</label><input type="number" inputmode="decimal"
+                                                    id="ddm-gs-ddm" placeholder="0.000" step="0.001" class="center mono"
+                                                    oninput="convertDDM('gs','ddm')"></div>
+                                            <div class="field"><label>µA</label><input type="number" inputmode="decimal"
+                                                    id="ddm-gs-ua" placeholder="0.0" step="0.1" class="center mono"
+                                                    oninput="convertDDM('gs','ua')"></div>
+                                            <div style="font-size:11.5px; color:var(--muted); line-height:1.4;">
+                                                <div><span class="c-amber">+µA (Top):</span> Fly Up (Below GP)</div>
+                                                <div><span class="c-amber">−µA (Bot):</span> Fly Down (Above GP)</div>
+                                            </div>
+                                        </div>
+                                        <div class="ddm-vert-wrap">
+                                            <div class="ddm-scale vert" id="ddm-gs-scale">
+                                                <div class="center"></div>
+                                                <div class="bar" id="ddm-gs-bar" style="background:var(--amber)"></div>
+                                                <div class="needle" id="ddm-gs-needle"
+                                                    style="background:var(--amber); color:var(--amber)"></div>
+                                            </div>
+                                            <div class="ddm-axis vert"><span>+150 µA</span><span>0</span><span>−150 µA</span></div>
+                                        </div>
                                     </div>
-                                    <div class="ddm-scale" id="ddm-gs-scale">
-                                        <div class="center"></div>
-                                        <div class="bar" id="ddm-gs-bar" style="background:var(--amber)"></div>
-                                        <div class="needle" id="ddm-gs-needle"
-                                            style="background:var(--amber); color:var(--amber)"></div>
-                                    </div>
-                                    <div class="ddm-axis"><span>−150 µA</span><span>0</span><span>+150 µA</span></div>
                                 </div>
                                 <div class="section-label" style="margin-top:18px;">Annex 10 Reference</div>
                                 <div class="table-wrap">

@@ -498,7 +498,7 @@ function drawPapiFan(st, acft, lights) {
     ang.forEach((a, i) => {
         const yEnd = endYs[i];
         V.el(s.el, 'line', { x1: X(0), y1: yBase, x2: X(maxD), y2: yEnd, stroke: boxCols[i], 'stroke-width': 2 });
-        V.el(s.el, 'text', { x: X(maxD) + 7, y: yEnd, 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
+        V.el(s.el, 'text', { 'class': 'viz-lbl', x: X(maxD) + 7, y: yEnd, 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
     });
 
     // Aircraft approach ray & clean aircraft icon along the same exaggerated angular scale
@@ -511,7 +511,7 @@ function drawPapiFan(st, acft, lights) {
 
     // PAPI origin marker & Runway Ident
     V.el(s.el, 'rect', { x: X(0) - 5, y: yBase - 5, width: 10, height: 10, rx: 2, fill: V.c('--amber') });
-    V.el(s.el, 'text', { x: X(0) + 8, y: padT + 6, fill: V.c('--muted'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${st.ident} · CA ${st.ca.toFixed(2)}°`);
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: X(0) + 8, y: padT + 6, fill: V.c('--muted'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${st.ident} · CA ${st.ca.toFixed(2)}°`);
 }
 
 // Plan-view box reference (replaces v1 canvases papi1Canvas / papi2Canvas)
@@ -543,15 +543,15 @@ function syncReferenceGuide(id) {
         V.el(s.el, 'rect', { x: bx, y, width: bs, height: bs, rx: 4, fill: color });
         let tx = bx + bs + 12;
         ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => {
-            V.el(s.el, 'text', { x: tx, y: y + bs / 2, 'dominant-baseline': 'central', fill: n === naming ? V.c('--text') : V.c('--muted'), 'font-size': 12, 'font-weight': n === naming ? 800 : 500, 'font-family': "'JetBrains Mono', monospace" }, names[n][i]);
+            V.el(s.el, 'text', { 'class': 'viz-lbl', x: tx, y: y + bs / 2, 'dominant-baseline': 'central', fill: n === naming ? V.c('--text') : V.c('--muted'), 'font-size': 12, 'font-weight': n === naming ? 800 : 500, 'font-family': "'JetBrains Mono', monospace" }, names[n][i]);
             tx += colStep;
         });
     }
     let tx = bx + bs + 12;
-    ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => { V.el(s.el, 'text', { x: tx, y: 16, fill: n === naming ? V.c('--primary') : V.c('--muted'), 'font-size': 10, 'font-weight': 700 }, n); tx += colStep; });
-    V.el(s.el, 'text', { x: bx - 8, y: rwyY - 16 - bs - 3 * (bs + gap) + bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'away ↑');
-    V.el(s.el, 'text', { x: bx - 8, y: rwyY - 16 - bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'close ↓');
-    V.el(s.el, 'text', { x: s.w / 2, y: s.h - 12, 'text-anchor': 'middle', fill: V.c('--text'), 'font-size': 13, 'font-weight': 700 }, 'LANDING DIRECTION →');
+    ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => { V.el(s.el, 'text', { 'class': 'viz-lbl', x: tx, y: 16, fill: n === naming ? V.c('--primary') : V.c('--muted'), 'font-size': 10, 'font-weight': 700 }, n); tx += colStep; });
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: bx - 8, y: rwyY - 16 - bs - 3 * (bs + gap) + bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'away ↑');
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: bx - 8, y: rwyY - 16 - bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'close ↓');
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: s.w / 2, y: s.h - 12, 'text-anchor': 'middle', fill: V.c('--text'), 'font-size': 13, 'font-weight': 700 }, 'LANDING DIRECTION →');
 }
 
 App.register('papi', {

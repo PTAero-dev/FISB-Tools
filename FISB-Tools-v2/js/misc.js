@@ -214,17 +214,33 @@ function convertDDM(type, src) {
 }
 
 function updateDDMBar(barEl, uaVal) {
+    if (!barEl) return;
     const pct = Math.min(Math.max(uaVal / 150, -1), 1); // clamp to -1..+1
     const absPct = Math.abs(pct) * 50;
-    if (pct >= 0) {
-        barEl.style.left = '50%';
-        barEl.style.width = absPct + '%';
-    } else {
-        barEl.style.left = (50 - absPct) + '%';
-        barEl.style.width = absPct + '%';
-    }
+    const sc = barEl.closest('.ddm-scale');
+    const isVert = sc && sc.classList.contains('vert');
     const needle = document.getElementById(barEl.id.replace('-bar', '-needle'));
-    if (needle) needle.style.left = (50 + pct * 50) + '%';
+
+    if (isVert) {
+        // Vertical CDI Glideslope: +150 µA at top (0%), 0 at center (50%), -150 µA at bottom (100%)
+        if (pct >= 0) {
+            barEl.style.top = (50 - absPct) + '%';
+            barEl.style.height = absPct + '%';
+        } else {
+            barEl.style.top = '50%';
+            barEl.style.height = absPct + '%';
+        }
+        if (needle) needle.style.top = (50 - pct * 50) + '%';
+    } else {
+        if (pct >= 0) {
+            barEl.style.left = '50%';
+            barEl.style.width = absPct + '%';
+        } else {
+            barEl.style.left = (50 - absPct) + '%';
+            barEl.style.width = absPct + '%';
+        }
+        if (needle) needle.style.left = (50 + pct * 50) + '%';
+    }
 }
 
 function clearDDMConverter() {
@@ -237,11 +253,13 @@ function initDDMScales() {
     ['loc', 'gs'].forEach(t => {
         const sc = document.getElementById(`ddm-${t}-scale`);
         if (!sc || sc.querySelector('.tick')) return;
+        const isVert = sc.classList.contains('vert');
         for (let k = -5; k <= 5; k++) {
             if (!k) continue;
             const d = document.createElement('div');
             d.className = 'tick';
-            d.style.left = (50 + k * 10) + '%';
+            if (isVert) d.style.top = (50 + k * 10) + '%';
+            else d.style.left = (50 + k * 10) + '%';
             sc.insertBefore(d, sc.firstChild);
         }
     });

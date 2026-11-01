@@ -32,7 +32,7 @@ function legCardHTML(id, num, prevEndAlt, prevEndDist, isFirst) {
             <div class="stat"><div class="k">ft / NM</div><div class="v res-accent" id="${id}-ftnm">0</div></div>
             <div class="stat t-cyan"><div class="k">Gradient</div><div class="v" id="${id}-percent">0.0%</div><div class="s" id="${id}-angle">0.00°</div></div>
         </div>
-        <div class="viz leg-canvas ${hideVizOnMobile}" id="${id}-viz-wrap" style="margin-top:12px;"><canvas id="${id}Canvas" style="height:150px;"></canvas></div>
+        <div class="viz leg-canvas ${hideVizOnMobile}" id="${id}-viz-wrap" style="margin-top:12px;"><canvas id="${id}Canvas" style="height:150px;"></canvas><div class="viz-toolbar"><button type="button" class="btn sm active viz-lbl-btn" title="Hide / show chart labels" onclick="event.stopPropagation(); toggle2DLabels(this)">Hide Labels</button></div></div>
     </div>`;
 }
 
@@ -339,9 +339,11 @@ function drawGradientViz(runNM, riseFT, isClimb, angleVal, canvasId) {
         ctx.beginPath();
         if (isClimb) ctx.arc(ax, ay, 48, -ang, 0); else ctx.arc(ax, ay, 48, Math.PI, Math.PI + ang);
         ctx.stroke();
-        V.font(ctx, 11, 700, true); ctx.fillStyle = V.c('--cyan'); ctx.textBaseline = 'middle';
-        ctx.textAlign = isClimb ? 'left' : 'right';
-        ctx.fillText(`${angleVal.toFixed(2)}°`, isClimb ? ax + 54 : ax - 54, ay - 8);
+        if (!V.labelsHidden(ctx)) {
+            V.font(ctx, 11, 700, true); ctx.fillStyle = V.c('--cyan'); ctx.textBaseline = 'middle';
+            ctx.textAlign = isClimb ? 'left' : 'right';
+            ctx.fillText(`${angleVal.toFixed(2)}°`, isClimb ? ax + 54 : ax - 54, ay - 8);
+        }
     }
 
     // path
@@ -355,8 +357,10 @@ function drawGradientViz(runNM, riseFT, isClimb, angleVal, canvasId) {
     // labels
     if (!isNaN(sAlt)) V.pill(ctx, `${fmt(Math.round(sAlt))} ft`, x0 + 2, ys + (level ? -14 : isClimb ? -30 : 16), { color: V.c('--text') });
     if (!isNaN(eAlt)) V.pill(ctx, `${fmt(Math.round(eAlt))} ft`, x1 - 2, ye + (level ? -14 : isClimb ? 16 : -30), { align: 'right', color: V.c('--text') });
-    V.font(ctx, 11, 600, true); ctx.fillStyle = V.c('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(`${runNM} NM  ·  Δ ${fmt(Math.round(riseFT))} ft`, w / 2, yBot + 13);
+    if (!V.labelsHidden(ctx)) {
+        V.font(ctx, 11, 600, true); ctx.fillStyle = V.c('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(`${runNM} NM  ·  Δ ${fmt(Math.round(riseFT))} ft`, w / 2, yBot + 13);
+    }
 }
 
 // ---------- Full multi-leg profile ----------
@@ -428,7 +432,7 @@ function drawGradProfile() {
     legs.forEach((l, i) => {
         [[l.x0, l.sAlt], [l.x1, l.eAlt]].forEach(([x, a], j) => {
             V.el(s.el, 'circle', { cx: X(x), cy: Y(a), r: 4.5, fill: V.c('--surface'), stroke: V.c('--text'), 'stroke-width': 2 });
-            if (j === 1 || i === 0) V.el(s.el, 'text', { x: X(x), y: Y(a) + 16, 'text-anchor': 'middle', fill: V.c('--text-2'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, fmt(Math.round(a)));
+            if (j === 1 || i === 0) V.el(s.el, 'text', { 'class': 'viz-lbl', x: X(x), y: Y(a) + 16, 'text-anchor': 'middle', fill: V.c('--text-2'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, fmt(Math.round(a)));
         });
     });
 }

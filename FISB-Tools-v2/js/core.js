@@ -151,8 +151,13 @@ const V = {
     font(ctx, size = 12, weight = 500, mono = false) {
         ctx.font = `${weight} ${size}px ${mono ? "'JetBrains Mono', monospace" : 'Inter, sans-serif'}`;
     },
+    labelsHidden(el) {
+        const n = el && (el.canvas || el.el || el);
+        return !!(n && n.closest && n.closest('.viz-no-labels'));
+    },
     // Rounded label pill on canvas
     pill(ctx, text, x, y, opt = {}) {
+        if (V.labelsHidden(ctx)) return;
         const size = opt.size || 11;
         V.font(ctx, size, opt.weight || 700, opt.mono !== false);
         const padX = 6, h = size + 8;
@@ -236,7 +241,7 @@ const V = {
     },
     label(s, x, y, text, color, opt = {}) {
         const size = opt.size || 11;
-        const g = V.el(s.el, 'g');
+        const g = V.el(s.el, 'g', { 'class': 'viz-lbl' });
         const t = V.el(g, 'text', { x, y, 'text-anchor': opt.anchor || 'middle', 'dominant-baseline': 'central', fill: color || V.c('--text'), 'font-size': size, 'font-weight': opt.weight || 700, 'font-family': opt.mono === false ? 'Inter, sans-serif' : "'JetBrains Mono', monospace" }, text);
         if (opt.bg !== false) {
             const bb = t.getBBox ? t.getBBox() : null;
@@ -402,8 +407,36 @@ function setSegActive(container, attr, value) {
     container.querySelectorAll(`[data-${attr}]`).forEach(b => b.classList.toggle('active', b.dataset[attr] === String(value)));
 }
 
+// Toggle floating labels on 2D charts (Canvas & SVG)
+function toggle2DLabels(btn) {
+    const viz = btn.closest('.viz') || btn.closest('.panel');
+    if (!viz) return;
+    const hidden = viz.classList.toggle('viz-no-labels');
+    btn.textContent = hidden ? 'Show Labels' : 'Hide Labels';
+    btn.classList.toggle('active', !hidden);
+    App.redrawActive();
+}
+
 // Collapsible visualization panels (minimized by default on mobile <= 760px)
 function initVizPanels() {
+    // Inject Hide/Show Labels button into every 2D .viz container
+    document.querySelectorAll('.viz').forEach(viz => {
+        if (viz.querySelector('.scene3d') || viz.querySelector('.viz-lbl-btn')) return;
+        let tb = viz.querySelector(':scope > .viz-toolbar');
+        if (!tb) {
+            tb = document.createElement('div');
+            tb.className = 'viz-toolbar';
+            viz.appendChild(tb);
+        }
+        const lbtn = document.createElement('button');
+        lbtn.type = 'button';
+        lbtn.className = 'btn sm active viz-lbl-btn';
+        lbtn.title = 'Hide / show chart labels';
+        lbtn.textContent = 'Hide Labels';
+        lbtn.onclick = function (e) { e.stopPropagation(); toggle2DLabels(this); };
+        tb.insertBefore(lbtn, tb.firstChild);
+    });
+
     const isMobile = window.innerWidth <= 760;
     document.querySelectorAll('.panel').forEach(panel => {
         if (panel.classList.contains('leg-card') || panel.classList.contains('viz-panel')) return;

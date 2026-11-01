@@ -112,8 +112,10 @@ function drawILSViz(distNM, gpa, hat, targetMSL, tch) {
     const arcR = Math.min(44, Math.max(24, (xTarget - xThr) * 0.28));
     ctx.strokeStyle = V.c('--amber'); ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(xThr, yTch, arcR, -angPx, 0); ctx.stroke();
-    V.font(ctx, 10.5, 700, true); ctx.fillStyle = V.c('--amber'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(`${gpa}° (TCH ${tch}')`, xThr + arcR + 5, yTch - 8);
+    if (!V.labelsHidden(ctx)) {
+        V.font(ctx, 10.5, 700, true); ctx.fillStyle = V.c('--amber'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(`${gpa}° (TCH ${tch}')`, xThr + arcR + 5, yTch - 8);
+    }
 
     // drop line
     ctx.strokeStyle = V.c('--primary'); ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
@@ -442,9 +444,219 @@ function buildIls3D(refit) {
     S.requestRender();
 }
 
+// =========================================================
+// LOC COURSE WIDTH CALCULATOR (ICAO Annex 10 Vol I, 3.1.3.7)
+// Half-sector linear width at ILS Reference Datum (THR) = 106.68 m (350 ft)
+// Full linear width at THR = 213.36 m (700 ft)
+// =========================================================
+const LOC_HALF_WIDTH_M = 106.68; // 350 ft exact (350 * 0.3048 = 106.68 m)
+const FT_PER_M = 3.280839895;
+
+function setLocSetbackM(mVal, btn) {
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (smEl) smEl.value = mVal;
+    if (sftEl) sftEl.value = Math.round(mVal * FT_PER_M);
+    document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.toggle('active', b === btn));
+    calcLocWidth('preset');
+}
+
+function setLocSetbackFt(ftVal, btn) {
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (sftEl) sftEl.value = ftVal;
+    if (smEl) smEl.value = Math.round(ftVal / FT_PER_M);
+    document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.toggle('active', b === btn));
+    calcLocWidth('preset');
+}
+
+function resetLocWidth() {
+    const rmEl = document.getElementById('locw-rwy-m');
+    const rftEl = document.getElementById('locw-rwy-ft');
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (rmEl) rmEl.value = '';
+    if (rftEl) rftEl.value = '';
+    if (smEl) smEl.value = '0';
+    if (sftEl) sftEl.value = '0';
+    const chips = document.querySelectorAll('#locw-presets .preset-chip');
+    chips.forEach((b, i) => b.classList.toggle('active', i === 0));
+    calcLocWidth();
+}
+
+function fmtDegDMS(deg) {
+    const d = Math.floor(deg);
+    const mFull = (deg - d) * 60;
+    const m = Math.floor(mFull);
+    const s = Math.round((mFull - m) * 60);
+    return `${d}° ${String(m).padStart(2, '0')}' ${String(s).padStart(2, '0')}"`;
+}
+
+function calcLocWidth(src) {
+    const rmEl = document.getElementById('locw-rwy-m');
+    const rftEl = document.getElementById('locw-rwy-ft');
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (!rmEl || !rftEl) return;
+
+    if (src === 'rwy-m') {
+        const m = parseFloat(rmEl.value);
+        rftEl.value = (!isNaN(m) && m > 0) ? Math.round(m * FT_PER_M) : '';
+    } else if (src === 'rwy-ft') {
+        const ft = parseFloat(rftEl.value);
+        rmEl.value = (!isNaN(ft) && ft > 0) ? Math.round(ft / FT_PER_M) : '';
+    } else if (src === 'set-m') {
+        const sm = parseFloat(smEl.value);
+        sftEl.value = !isNaN(sm) ? Math.round(sm * FT_PER_M) : '';
+        document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.remove('active'));
+    } else if (src === 'set-ft') {
+        const sft = parseFloat(sftEl.value);
+        smEl.value = !isNaN(sft) ? Math.round(sft / FT_PER_M) : '';
+        document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.remove('active'));
+    }
+
+    const rwyM = parseFloat(rmEl.value);
+    const setM = parseFloat(smEl && smEl.value !== '' ? smEl.value : '0') || 0;
+
+    const thetaEl = document.getElementById('locw-theta');
+    const dmsEl = document.getElementById('locw-theta-dms');
+    const halfEl = document.getElementById('locw-half');
+    const statusEl = document.getElementById('locw-status');
+    const distEl = document.getElementById('locw-total-dist');
+    const sensDegEl = document.getElementById('locw-sens-deg');
+
+    if (isNaN(rwyM) || rwyM <= 0) {
+        if (thetaEl) thetaEl.textContent = '-- °';
+        if (dmsEl) dmsEl.textContent = 'Full Sector (150 µA – 150 µA)';
+        if (halfEl) halfEl.textContent = '-- °';
+        if (statusEl) statusEl.textContent = 'Enter runway length';
+        if (distEl) distEl.textContent = '--';
+        if (sensDegEl) sensDegEl.textContent = '--';
+        drawLocWidthViz(0, 0, 0, 0);
+        return;
+    }
+
+    const totalM = rwyM + Math.max(0, setM);
+    const totalFt = totalM * FT_PER_M;
+    const halfRad = Math.atan(LOC_HALF_WIDTH_M / totalM);
+    const halfDeg = halfRad * 180 / Math.PI;
+    const thetaDeg = halfDeg * 2;
+
+    const ddmPerDeg = 0.155 / halfDeg;
+    const uaPerDeg = 150 / halfDeg;
+
+    if (thetaEl) thetaEl.textContent = `${thetaDeg.toFixed(2)}°`;
+    if (dmsEl) dmsEl.textContent = `${fmtDegDMS(thetaDeg)} (${thetaDeg.toFixed(3)}°)`;
+    if (halfEl) halfEl.textContent = `±${halfDeg.toFixed(2)}°`;
+    if (distEl) distEl.textContent = `${fmt(Math.round(totalM))} m  (${fmt(Math.round(totalFt))} ft)`;
+    if (sensDegEl) sensDegEl.textContent = `${ddmPerDeg.toFixed(4)} DDM/° · ${uaPerDeg.toFixed(1)} µA/°`;
+
+    if (statusEl) {
+        if (thetaDeg >= 3.0 && thetaDeg <= 6.0) {
+            statusEl.innerHTML = `<span style="color:var(--green); font-weight:700;">ICAO Standard (3°–6°)</span>`;
+        } else if (thetaDeg > 6.0) {
+            statusEl.innerHTML = `<span style="color:var(--amber); font-weight:700;">> 6.0° (Tailored cap = 6.0°)</span>`;
+        } else {
+            statusEl.innerHTML = `<span style="color:var(--cyan); font-weight:700;">< 3.0° (Long RWY sector)</span>`;
+        }
+    }
+
+    drawLocWidthViz(rwyM, Math.max(0, setM), totalM, thetaDeg);
+}
+
+function drawLocWidthViz(rwyM, setM, totalM, thetaDeg) {
+    const empty = document.getElementById('locw-empty');
+    if (empty) empty.style.display = totalM > 0 ? 'none' : '';
+    const S = V.canvas(document.getElementById('locWidthCanvas'));
+    if (!S) return;
+    const { ctx, w, h } = S;
+    if (totalM <= 0) return;
+
+    const padL = 26, padR = 26, padT = 22, padB = 26;
+    const drawW = w - padL - padR;
+    const cy = (padT + (h - padB)) / 2;
+
+    // Horizontal coordinates: THR on left (xThr), Stop End (xStop), LOC Antenna on right (xLoc)
+    const appM = totalM * 0.18; // show a bit of approach before THR
+    const spanM = appM + totalM * 1.04;
+    const toX = mFromThr => padL + ((mFromThr + appM) / spanM) * drawW;
+
+    const xApp = toX(-appM * 0.85);
+    const xThr = toX(0);
+    const xStop = toX(rwyM);
+    const xLoc = toX(totalM);
+
+    // Visual half-width at threshold (schematic vertical scale so wedge is crisp and readable)
+    const halfGatePx = Math.min(54, Math.max(36, (h - padT - padB) * 0.34));
+    // Slope from LOC antenna (xLoc, cy) through (xThr, cy ± halfGatePx)
+    const yAtX = (x, sign) => cy + sign * halfGatePx * ((xLoc - x) / Math.max(1, xLoc - xThr));
+
+    // Centreline dashed
+    ctx.strokeStyle = V.c('--viz-axis'); ctx.lineWidth = 1; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, cy); ctx.lineTo(w - padR, cy); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Course sector wedge from LOC antenna through THR to approach
+    const grad = ctx.createLinearGradient(xLoc, 0, xApp, 0);
+    grad.addColorStop(0, 'rgba(34,211,238,0.26)');
+    grad.addColorStop(1, 'rgba(34,211,238,0.06)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(xLoc, cy);
+    ctx.lineTo(xApp, yAtX(xApp, -1));
+    ctx.lineTo(xApp, yAtX(xApp, +1));
+    ctx.closePath();
+    ctx.fill();
+
+    // Sector boundary rays (±0.155 DDM / ±150 µA)
+    ctx.strokeStyle = V.c('--cyan'); ctx.lineWidth = 2;
+    [-1, 1].forEach(s => {
+        ctx.beginPath(); ctx.moveTo(xLoc, cy); ctx.lineTo(xApp, yAtX(xApp, s)); ctx.stroke();
+    });
+
+    // Runway strip (THR to Stop End)
+    const rwyHalfH = 10;
+    ctx.fillStyle = '#2b313b'; ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1;
+    ctx.fillRect(xThr, cy - rwyHalfH, Math.max(8, xStop - xThr), rwyHalfH * 2);
+    ctx.strokeRect(xThr, cy - rwyHalfH, Math.max(8, xStop - xThr), rwyHalfH * 2);
+    ctx.fillStyle = '#e5e7eb';
+    for (let x = xThr + 10; x < xStop - 8; x += 16) ctx.fillRect(x, cy - 1, 8, 2);
+
+    // Threshold ±106.7 m (±350 ft) gate line
+    ctx.strokeStyle = V.c('--amber'); ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(xThr, cy - halfGatePx); ctx.lineTo(xThr, cy + halfGatePx); ctx.stroke();
+    [-1, 1].forEach(s => {
+        ctx.fillStyle = V.c('--amber');
+        ctx.beginPath(); ctx.arc(xThr, cy + s * halfGatePx, 3.5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // LOC antenna marker
+    ctx.fillStyle = V.c('--cyan');
+    ctx.beginPath(); ctx.arc(xLoc, cy, 5, 0, Math.PI * 2); ctx.fill();
+
+    // Dimension line at bottom (THR to LOC)
+    const yDim = h - 10;
+    ctx.strokeStyle = V.c('--muted'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xThr, yDim); ctx.lineTo(xLoc, yDim); ctx.stroke();
+    [xThr, xStop, xLoc].forEach(x => {
+        ctx.beginPath(); ctx.moveTo(x, yDim - 4); ctx.lineTo(x, yDim + 4); ctx.stroke();
+    });
+
+    // Floating labels (automatically hidden when Hide Labels is toggled)
+    V.pill(ctx, `±106.7 m (±350')`, xThr + 6, cy - halfGatePx - 10, { color: V.c('--amber'), size: 10.5 });
+    V.pill(ctx, `θ = ${thetaDeg.toFixed(2)}° (±${(thetaDeg / 2).toFixed(2)}°)`, (xThr + xLoc) * 0.5, cy - halfGatePx * 0.58, { align: 'center', color: V.c('--cyan'), size: 11.5 });
+    V.pill(ctx, `THR`, xThr, cy + halfGatePx + 12, { align: 'center', color: V.c('--amber'), size: 10 });
+    V.pill(ctx, `LOC`, xLoc, cy - 18, { align: 'center', color: V.c('--cyan'), size: 10 });
+    if (!V.labelsHidden(ctx)) {
+        V.font(ctx, 10, 600, true); ctx.fillStyle = V.c('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(`D = ${fmt(Math.round(totalM))} m (${fmt(Math.round(totalM * FT_PER_M))} ft)`, (xThr + xLoc) / 2, yDim - 3);
+    }
+}
+
 App.register('ils', {
     onShow(pane) {
         if (pane === 'profile' || !pane) { calcILS(); if (ilsScene) ilsScene.resize(); }
         if (pane === 'coverage') drawILSCov();
+        if (pane === 'locwidth') calcLocWidth();
     }
 });

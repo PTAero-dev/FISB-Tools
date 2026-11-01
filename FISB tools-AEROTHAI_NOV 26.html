@@ -428,6 +428,7 @@ body.light-theme .seg > button.active { background: #fff; box-shadow: 0 1px 3px 
 .viz-toolbar .seg { background: rgba(10, 14, 22, 0.7); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 body.light-theme .viz-toolbar .seg { background: rgba(255,255,255,0.85); }
 .viz-caption { position: absolute; left: 12px; top: 10px; z-index: 2; font-size: 12px; font-weight: 600; color: var(--muted); pointer-events: none; }
+.viz-no-labels .viz-lbl, .viz-no-labels .viz-caption { display: none !important; }
 .viz-empty {
     position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
     color: var(--muted); font-size: 13px; padding: 20px; pointer-events: none;
@@ -521,7 +522,7 @@ body.light-theme .lbl3d { background: rgba(255,255,255,0.92); color: #0f172a; bo
 /* ---------- DDM instrument ---------- */
 .ddm-block { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: var(--surface-2); }
 .ddm-block + .ddm-block { margin-top: 14px; }
-.ddm-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+.ddm-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; flex-wrap: wrap; }
 .ddm-head b { font-size: 13px; }
 .ddm-scale { position: relative; height: 34px; margin-top: 14px; border-radius: 10px; background: var(--field); border: 1px solid var(--border); overflow: hidden; }
 .ddm-scale .tick { position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--muted); transform: translate(-50%, -50%); }
@@ -529,6 +530,21 @@ body.light-theme .lbl3d { background: rgba(255,255,255,0.92); color: #0f172a; bo
 .ddm-scale .bar { position: absolute; top: 9px; bottom: 9px; left: 50%; width: 0; border-radius: 6px; opacity: 0.55; transition: all .2s ease; }
 .ddm-scale .needle { position: absolute; top: 3px; bottom: 3px; width: 4px; border-radius: 2px; left: 50%; transform: translateX(-50%); transition: left .2s ease; box-shadow: 0 0 8px currentColor; }
 .ddm-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+/* Vertical CDI Glideslope layout */
+.ddm-gs-layout { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.ddm-gs-inputs { display: flex; flex-direction: column; gap: 10px; }
+.ddm-vert-wrap { display: flex; align-items: stretch; gap: 8px; padding: 4px 2px; }
+.ddm-scale.vert { margin-top: 0; width: 40px; height: 176px; flex-shrink: 0; }
+.ddm-scale.vert .tick { left: 50%; }
+.ddm-scale.vert .center { left: 4px; right: 4px; top: 50%; bottom: auto; width: auto; height: 2px; transform: translateY(-50%); }
+.ddm-scale.vert .bar { left: 9px; right: 9px; top: 50%; bottom: auto; width: auto; height: 0; }
+.ddm-scale.vert .needle { left: 3px; right: 3px; top: 50%; bottom: auto; width: auto; height: 4px; transform: translateY(-50%); transition: top .2s ease; }
+.ddm-axis.vert { flex-direction: column; justify-content: space-between; margin-top: 0; text-align: left; font-size: 11px; padding: 2px 0; white-space: nowrap; }
+
+.preset-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.preset-chip { height: 26px; padding: 0 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; font-family: var(--mono); background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text-2); cursor: pointer; transition: all .15s; }
+.preset-chip:hover, .preset-chip.active { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
 
 /* ---------- Morse ---------- */
 .morse-out { font-family: var(--mono); font-size: 26px; font-weight: 800; color: var(--primary); letter-spacing: 4px; min-height: 42px; word-break: break-all; }
@@ -684,6 +700,7 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
     .toast { bottom: calc(var(--bottomnav-h) + 16px + env(safe-area-inset-bottom)); }
     .leg-results { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .coord-in { grid-template-columns: minmax(0, 1fr); }
+    .modern-table th, .modern-table td { padding: 9px 8px; font-size: 12px; }
     .hide-phone { display: none !important; }
 }
 @media (max-width: 400px) {
@@ -1870,6 +1887,93 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
                         </div>
                     </div>
 
+                    <div class="pane" data-pane="locwidth" data-label="LOC Width">
+                        <div class="workbench">
+                            <div class="panel">
+                                <div class="panel-head">
+                                    <h2>LOC Course Width <span class="sub">ICAO Annex 10</span></h2><span class="spacer"></span>
+                                    <button class="btn sm danger-ghost"
+                                        onclick="resetLocWidth()"><svg class="i sm">
+                                            <use href="#ic-reset" />
+                                        </svg>Reset</button>
+                                </div>
+                                <div class="panel-body">
+                                    <p class="panel-note">ICAO Annex 10 standard course width sets full-scale deflection (±0.155 DDM / ±150 µA) at ±106.7 m (±350 ft) from centreline at the threshold (total gate 213.4 m / 700 ft).</p>
+                                    <div class="section-label">Runway Length</div>
+                                    <div class="fields">
+                                        <div class="field"><label>Length (Meters)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-rwy-m" placeholder="e.g. 3000" step="1"
+                                                    oninput="calcLocWidth('rwy-m')"><span class="unit">m</span></div>
+                                        </div>
+                                        <div class="field"><label>Length (Feet)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-rwy-ft" placeholder="e.g. 9843" step="1"
+                                                    oninput="calcLocWidth('rwy-ft')"><span class="unit">ft</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="section-label" style="margin-top:16px;">LOC Antenna Setback <span class="opt">(from Stop End)</span></div>
+                                    <div class="fields">
+                                        <div class="field"><label>Setback (Meters)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-set-m" value="0" placeholder="0" step="1"
+                                                    oninput="calcLocWidth('set-m')"><span class="unit">m</span></div>
+                                        </div>
+                                        <div class="field"><label>Setback (Feet)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-set-ft" value="0" placeholder="0" step="1"
+                                                    oninput="calcLocWidth('set-ft')"><span class="unit">ft</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="preset-chips" id="locw-presets">
+                                        <button type="button" class="preset-chip active" onclick="setLocSetbackM(0, this)">0 m (THR→LOC = RWY)</button>
+                                        <button type="button" class="preset-chip" onclick="setLocSetbackM(180, this)">+180 m (600 ft)</button>
+                                        <button type="button" class="preset-chip" onclick="setLocSetbackM(300, this)">+300 m (984 ft)</button>
+                                        <button type="button" class="preset-chip" onclick="setLocSetbackFt(1000, this)">+1,000 ft (305 m)</button>
+                                    </div>
+                                    <div class="stats" style="margin-top:16px;">
+                                        <div class="stat hero t-cyan">
+                                            <div class="k">Course Width (θ)</div>
+                                            <div class="v" id="locw-theta">-- °</div>
+                                            <div class="s" id="locw-theta-dms">Full Sector (150 µA – 150 µA)</div>
+                                        </div>
+                                        <div class="stat hero t-green">
+                                            <div class="k">Half Sector (±θ/2)</div>
+                                            <div class="v" id="locw-half">-- °</div>
+                                            <div class="s" id="locw-status">Enter runway length</div>
+                                        </div>
+                                    </div>
+                                    <div class="readout" style="margin-top:14px;">
+                                        <div class="result-row"><span class="result-label">Total Dist (THR → LOC)</span><span
+                                                id="locw-total-dist" class="result-value c-primary">--</span></div>
+                                        <div class="result-row"><span class="result-label">Threshold Gate (±350 ft)</span><span
+                                                id="locw-gate" class="result-value">213.36 m / 700 ft</span></div>
+                                        <div class="result-row"><span class="result-label">Angular Sensitivity</span><span
+                                                id="locw-sens-deg" class="result-value c-cyan">--</span></div>
+                                        <div class="result-row"><span class="result-label">Linear Sensitivity (at THR)</span><span
+                                                id="locw-sens-lin" class="result-value c-amber">0.00145 DDM/m · 1.41 µA/m</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="panel">
+                                    <div class="panel-head">
+                                        <h2>Course Sector Geometry</h2>
+                                    </div>
+                                    <div class="panel-body">
+                                        <div class="viz"><canvas id="locWidthCanvas" style="height:210px;"></canvas>
+                                            <div class="viz-empty" id="locw-empty">
+                                                <div><svg class="i">
+                                                        <use href="#ic-ils" />
+                                                    </svg>Enter runway length in m or ft</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="pane" data-pane="ddm" data-label="DDM ↔ µA">
                         <div class="panel" style="max-width:760px;">
                             <div class="panel-head">
@@ -1882,7 +1986,7 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
                                 <p class="panel-note">Convert DDM (Difference in Depth of Modulation) to / from µA. Dots
                                     mark 30 µA steps up to full-scale 150 µA.</p>
                                 <div class="ddm-block">
-                                    <div class="ddm-head"><b class="c-primary">LOCALIZER</b><span class="badge">FSD
+                                    <div class="ddm-head"><b class="c-primary">LOCALIZER (Horizontal CDI)</b><span class="badge">FSD
                                             0.155 DDM = 150 µA</span></div>
                                     <div class="fields">
                                         <div class="field"><label>DDM</label><input type="number" inputmode="decimal"
@@ -1901,23 +2005,31 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
                                     <div class="ddm-axis"><span>−150 µA</span><span>0</span><span>+150 µA</span></div>
                                 </div>
                                 <div class="ddm-block">
-                                    <div class="ddm-head"><b class="c-amber">GLIDESLOPE</b><span class="badge">FSD 0.175
+                                    <div class="ddm-head"><b class="c-amber">GLIDESLOPE (Vertical CDI)</b><span class="badge">FSD 0.175
                                             DDM = 150 µA</span></div>
-                                    <div class="fields">
-                                        <div class="field"><label>DDM</label><input type="number" inputmode="decimal"
-                                                id="ddm-gs-ddm" placeholder="0.000" step="0.001" class="center mono"
-                                                oninput="convertDDM('gs','ddm')"></div>
-                                        <div class="field"><label>µA</label><input type="number" inputmode="decimal"
-                                                id="ddm-gs-ua" placeholder="0.0" step="0.1" class="center mono"
-                                                oninput="convertDDM('gs','ua')"></div>
+                                    <div class="ddm-gs-layout">
+                                        <div class="ddm-gs-inputs">
+                                            <div class="field"><label>DDM</label><input type="number" inputmode="decimal"
+                                                    id="ddm-gs-ddm" placeholder="0.000" step="0.001" class="center mono"
+                                                    oninput="convertDDM('gs','ddm')"></div>
+                                            <div class="field"><label>µA</label><input type="number" inputmode="decimal"
+                                                    id="ddm-gs-ua" placeholder="0.0" step="0.1" class="center mono"
+                                                    oninput="convertDDM('gs','ua')"></div>
+                                            <div style="font-size:11.5px; color:var(--muted); line-height:1.4;">
+                                                <div><span class="c-amber">+µA (Top):</span> Fly Up (Below GP)</div>
+                                                <div><span class="c-amber">−µA (Bot):</span> Fly Down (Above GP)</div>
+                                            </div>
+                                        </div>
+                                        <div class="ddm-vert-wrap">
+                                            <div class="ddm-scale vert" id="ddm-gs-scale">
+                                                <div class="center"></div>
+                                                <div class="bar" id="ddm-gs-bar" style="background:var(--amber)"></div>
+                                                <div class="needle" id="ddm-gs-needle"
+                                                    style="background:var(--amber); color:var(--amber)"></div>
+                                            </div>
+                                            <div class="ddm-axis vert"><span>+150 µA</span><span>0</span><span>−150 µA</span></div>
+                                        </div>
                                     </div>
-                                    <div class="ddm-scale" id="ddm-gs-scale">
-                                        <div class="center"></div>
-                                        <div class="bar" id="ddm-gs-bar" style="background:var(--amber)"></div>
-                                        <div class="needle" id="ddm-gs-needle"
-                                            style="background:var(--amber); color:var(--amber)"></div>
-                                    </div>
-                                    <div class="ddm-axis"><span>−150 µA</span><span>0</span><span>+150 µA</span></div>
                                 </div>
                                 <div class="section-label" style="margin-top:18px;">Annex 10 Reference</div>
                                 <div class="table-wrap">
@@ -2882,8 +2994,13 @@ const V = {
     font(ctx, size = 12, weight = 500, mono = false) {
         ctx.font = `${weight} ${size}px ${mono ? "'JetBrains Mono', monospace" : 'Inter, sans-serif'}`;
     },
+    labelsHidden(el) {
+        const n = el && (el.canvas || el.el || el);
+        return !!(n && n.closest && n.closest('.viz-no-labels'));
+    },
     // Rounded label pill on canvas
     pill(ctx, text, x, y, opt = {}) {
+        if (V.labelsHidden(ctx)) return;
         const size = opt.size || 11;
         V.font(ctx, size, opt.weight || 700, opt.mono !== false);
         const padX = 6, h = size + 8;
@@ -2967,7 +3084,7 @@ const V = {
     },
     label(s, x, y, text, color, opt = {}) {
         const size = opt.size || 11;
-        const g = V.el(s.el, 'g');
+        const g = V.el(s.el, 'g', { 'class': 'viz-lbl' });
         const t = V.el(g, 'text', { x, y, 'text-anchor': opt.anchor || 'middle', 'dominant-baseline': 'central', fill: color || V.c('--text'), 'font-size': size, 'font-weight': opt.weight || 700, 'font-family': opt.mono === false ? 'Inter, sans-serif' : "'JetBrains Mono', monospace" }, text);
         if (opt.bg !== false) {
             const bb = t.getBBox ? t.getBBox() : null;
@@ -3133,8 +3250,36 @@ function setSegActive(container, attr, value) {
     container.querySelectorAll(`[data-${attr}]`).forEach(b => b.classList.toggle('active', b.dataset[attr] === String(value)));
 }
 
+// Toggle floating labels on 2D charts (Canvas & SVG)
+function toggle2DLabels(btn) {
+    const viz = btn.closest('.viz') || btn.closest('.panel');
+    if (!viz) return;
+    const hidden = viz.classList.toggle('viz-no-labels');
+    btn.textContent = hidden ? 'Show Labels' : 'Hide Labels';
+    btn.classList.toggle('active', !hidden);
+    App.redrawActive();
+}
+
 // Collapsible visualization panels (minimized by default on mobile <= 760px)
 function initVizPanels() {
+    // Inject Hide/Show Labels button into every 2D .viz container
+    document.querySelectorAll('.viz').forEach(viz => {
+        if (viz.querySelector('.scene3d') || viz.querySelector('.viz-lbl-btn')) return;
+        let tb = viz.querySelector(':scope > .viz-toolbar');
+        if (!tb) {
+            tb = document.createElement('div');
+            tb.className = 'viz-toolbar';
+            viz.appendChild(tb);
+        }
+        const lbtn = document.createElement('button');
+        lbtn.type = 'button';
+        lbtn.className = 'btn sm active viz-lbl-btn';
+        lbtn.title = 'Hide / show chart labels';
+        lbtn.textContent = 'Hide Labels';
+        lbtn.onclick = function (e) { e.stopPropagation(); toggle2DLabels(this); };
+        tb.insertBefore(lbtn, tb.firstChild);
+    });
+
     const isMobile = window.innerWidth <= 760;
     document.querySelectorAll('.panel').forEach(panel => {
         if (panel.classList.contains('leg-card') || panel.classList.contains('viz-panel')) return;
@@ -3637,7 +3782,7 @@ function legCardHTML(id, num, prevEndAlt, prevEndDist, isFirst) {
             <div class="stat"><div class="k">ft / NM</div><div class="v res-accent" id="${id}-ftnm">0</div></div>
             <div class="stat t-cyan"><div class="k">Gradient</div><div class="v" id="${id}-percent">0.0%</div><div class="s" id="${id}-angle">0.00°</div></div>
         </div>
-        <div class="viz leg-canvas ${hideVizOnMobile}" id="${id}-viz-wrap" style="margin-top:12px;"><canvas id="${id}Canvas" style="height:150px;"></canvas></div>
+        <div class="viz leg-canvas ${hideVizOnMobile}" id="${id}-viz-wrap" style="margin-top:12px;"><canvas id="${id}Canvas" style="height:150px;"></canvas><div class="viz-toolbar"><button type="button" class="btn sm active viz-lbl-btn" title="Hide / show chart labels" onclick="event.stopPropagation(); toggle2DLabels(this)">Hide Labels</button></div></div>
     </div>`;
 }
 
@@ -3944,9 +4089,11 @@ function drawGradientViz(runNM, riseFT, isClimb, angleVal, canvasId) {
         ctx.beginPath();
         if (isClimb) ctx.arc(ax, ay, 48, -ang, 0); else ctx.arc(ax, ay, 48, Math.PI, Math.PI + ang);
         ctx.stroke();
-        V.font(ctx, 11, 700, true); ctx.fillStyle = V.c('--cyan'); ctx.textBaseline = 'middle';
-        ctx.textAlign = isClimb ? 'left' : 'right';
-        ctx.fillText(`${angleVal.toFixed(2)}°`, isClimb ? ax + 54 : ax - 54, ay - 8);
+        if (!V.labelsHidden(ctx)) {
+            V.font(ctx, 11, 700, true); ctx.fillStyle = V.c('--cyan'); ctx.textBaseline = 'middle';
+            ctx.textAlign = isClimb ? 'left' : 'right';
+            ctx.fillText(`${angleVal.toFixed(2)}°`, isClimb ? ax + 54 : ax - 54, ay - 8);
+        }
     }
 
     // path
@@ -3960,8 +4107,10 @@ function drawGradientViz(runNM, riseFT, isClimb, angleVal, canvasId) {
     // labels
     if (!isNaN(sAlt)) V.pill(ctx, `${fmt(Math.round(sAlt))} ft`, x0 + 2, ys + (level ? -14 : isClimb ? -30 : 16), { color: V.c('--text') });
     if (!isNaN(eAlt)) V.pill(ctx, `${fmt(Math.round(eAlt))} ft`, x1 - 2, ye + (level ? -14 : isClimb ? 16 : -30), { align: 'right', color: V.c('--text') });
-    V.font(ctx, 11, 600, true); ctx.fillStyle = V.c('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(`${runNM} NM  ·  Δ ${fmt(Math.round(riseFT))} ft`, w / 2, yBot + 13);
+    if (!V.labelsHidden(ctx)) {
+        V.font(ctx, 11, 600, true); ctx.fillStyle = V.c('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(`${runNM} NM  ·  Δ ${fmt(Math.round(riseFT))} ft`, w / 2, yBot + 13);
+    }
 }
 
 // ---------- Full multi-leg profile ----------
@@ -4033,7 +4182,7 @@ function drawGradProfile() {
     legs.forEach((l, i) => {
         [[l.x0, l.sAlt], [l.x1, l.eAlt]].forEach(([x, a], j) => {
             V.el(s.el, 'circle', { cx: X(x), cy: Y(a), r: 4.5, fill: V.c('--surface'), stroke: V.c('--text'), 'stroke-width': 2 });
-            if (j === 1 || i === 0) V.el(s.el, 'text', { x: X(x), y: Y(a) + 16, 'text-anchor': 'middle', fill: V.c('--text-2'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, fmt(Math.round(a)));
+            if (j === 1 || i === 0) V.el(s.el, 'text', { 'class': 'viz-lbl', x: X(x), y: Y(a) + 16, 'text-anchor': 'middle', fill: V.c('--text-2'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, fmt(Math.round(a)));
         });
     });
 }
@@ -4550,7 +4699,7 @@ function drawPapiFan(st, acft, lights) {
     ang.forEach((a, i) => {
         const yEnd = endYs[i];
         V.el(s.el, 'line', { x1: X(0), y1: yBase, x2: X(maxD), y2: yEnd, stroke: boxCols[i], 'stroke-width': 2 });
-        V.el(s.el, 'text', { x: X(maxD) + 7, y: yEnd, 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
+        V.el(s.el, 'text', { 'class': 'viz-lbl', x: X(maxD) + 7, y: yEnd, 'dominant-baseline': 'central', fill: boxCols[i], 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${naming[i]} ${a.toFixed(2)}°`);
     });
 
     // Aircraft approach ray & clean aircraft icon along the same exaggerated angular scale
@@ -4563,7 +4712,7 @@ function drawPapiFan(st, acft, lights) {
 
     // PAPI origin marker & Runway Ident
     V.el(s.el, 'rect', { x: X(0) - 5, y: yBase - 5, width: 10, height: 10, rx: 2, fill: V.c('--amber') });
-    V.el(s.el, 'text', { x: X(0) + 8, y: padT + 6, fill: V.c('--muted'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${st.ident} · CA ${st.ca.toFixed(2)}°`);
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: X(0) + 8, y: padT + 6, fill: V.c('--muted'), 'font-size': 10.5, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, `${st.ident} · CA ${st.ca.toFixed(2)}°`);
 }
 
 // Plan-view box reference (replaces v1 canvases papi1Canvas / papi2Canvas)
@@ -4595,15 +4744,15 @@ function syncReferenceGuide(id) {
         V.el(s.el, 'rect', { x: bx, y, width: bs, height: bs, rx: 4, fill: color });
         let tx = bx + bs + 12;
         ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => {
-            V.el(s.el, 'text', { x: tx, y: y + bs / 2, 'dominant-baseline': 'central', fill: n === naming ? V.c('--text') : V.c('--muted'), 'font-size': 12, 'font-weight': n === naming ? 800 : 500, 'font-family': "'JetBrains Mono', monospace" }, names[n][i]);
+            V.el(s.el, 'text', { 'class': 'viz-lbl', x: tx, y: y + bs / 2, 'dominant-baseline': 'central', fill: n === naming ? V.c('--text') : V.c('--muted'), 'font-size': 12, 'font-weight': n === naming ? 800 : 500, 'font-family': "'JetBrains Mono', monospace" }, names[n][i]);
             tx += colStep;
         });
     }
     let tx = bx + bs + 12;
-    ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => { V.el(s.el, 'text', { x: tx, y: 16, fill: n === naming ? V.c('--primary') : V.c('--muted'), 'font-size': 10, 'font-weight': 700 }, n); tx += colStep; });
-    V.el(s.el, 'text', { x: bx - 8, y: rwyY - 16 - bs - 3 * (bs + gap) + bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'away ↑');
-    V.el(s.el, 'text', { x: bx - 8, y: rwyY - 16 - bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'close ↓');
-    V.el(s.el, 'text', { x: s.w / 2, y: s.h - 12, 'text-anchor': 'middle', fill: V.c('--text'), 'font-size': 13, 'font-weight': 700 }, 'LANDING DIRECTION →');
+    ['AEROTHAI', 'ICAO', 'FAA'].forEach(n => { V.el(s.el, 'text', { 'class': 'viz-lbl', x: tx, y: 16, fill: n === naming ? V.c('--primary') : V.c('--muted'), 'font-size': 10, 'font-weight': 700 }, n); tx += colStep; });
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: bx - 8, y: rwyY - 16 - bs - 3 * (bs + gap) + bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'away ↑');
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: bx - 8, y: rwyY - 16 - bs / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: V.c('--muted'), 'font-size': 10.5 }, 'close ↓');
+    V.el(s.el, 'text', { 'class': 'viz-lbl', x: s.w / 2, y: s.h - 12, 'text-anchor': 'middle', fill: V.c('--text'), 'font-size': 13, 'font-weight': 700 }, 'LANDING DIRECTION →');
 }
 
 App.register('papi', {
@@ -5916,8 +6065,10 @@ function drawILSViz(distNM, gpa, hat, targetMSL, tch) {
     const arcR = Math.min(44, Math.max(24, (xTarget - xThr) * 0.28));
     ctx.strokeStyle = V.c('--amber'); ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(xThr, yTch, arcR, -angPx, 0); ctx.stroke();
-    V.font(ctx, 10.5, 700, true); ctx.fillStyle = V.c('--amber'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(`${gpa}° (TCH ${tch}')`, xThr + arcR + 5, yTch - 8);
+    if (!V.labelsHidden(ctx)) {
+        V.font(ctx, 10.5, 700, true); ctx.fillStyle = V.c('--amber'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(`${gpa}° (TCH ${tch}')`, xThr + arcR + 5, yTch - 8);
+    }
 
     // drop line
     ctx.strokeStyle = V.c('--primary'); ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
@@ -6246,10 +6397,220 @@ function buildIls3D(refit) {
     S.requestRender();
 }
 
+// =========================================================
+// LOC COURSE WIDTH CALCULATOR (ICAO Annex 10 Vol I, 3.1.3.7)
+// Half-sector linear width at ILS Reference Datum (THR) = 106.68 m (350 ft)
+// Full linear width at THR = 213.36 m (700 ft)
+// =========================================================
+const LOC_HALF_WIDTH_M = 106.68; // 350 ft exact (350 * 0.3048 = 106.68 m)
+const FT_PER_M = 3.280839895;
+
+function setLocSetbackM(mVal, btn) {
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (smEl) smEl.value = mVal;
+    if (sftEl) sftEl.value = Math.round(mVal * FT_PER_M);
+    document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.toggle('active', b === btn));
+    calcLocWidth('preset');
+}
+
+function setLocSetbackFt(ftVal, btn) {
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (sftEl) sftEl.value = ftVal;
+    if (smEl) smEl.value = Math.round(ftVal / FT_PER_M);
+    document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.toggle('active', b === btn));
+    calcLocWidth('preset');
+}
+
+function resetLocWidth() {
+    const rmEl = document.getElementById('locw-rwy-m');
+    const rftEl = document.getElementById('locw-rwy-ft');
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (rmEl) rmEl.value = '';
+    if (rftEl) rftEl.value = '';
+    if (smEl) smEl.value = '0';
+    if (sftEl) sftEl.value = '0';
+    const chips = document.querySelectorAll('#locw-presets .preset-chip');
+    chips.forEach((b, i) => b.classList.toggle('active', i === 0));
+    calcLocWidth();
+}
+
+function fmtDegDMS(deg) {
+    const d = Math.floor(deg);
+    const mFull = (deg - d) * 60;
+    const m = Math.floor(mFull);
+    const s = Math.round((mFull - m) * 60);
+    return `${d}° ${String(m).padStart(2, '0')}' ${String(s).padStart(2, '0')}"`;
+}
+
+function calcLocWidth(src) {
+    const rmEl = document.getElementById('locw-rwy-m');
+    const rftEl = document.getElementById('locw-rwy-ft');
+    const smEl = document.getElementById('locw-set-m');
+    const sftEl = document.getElementById('locw-set-ft');
+    if (!rmEl || !rftEl) return;
+
+    if (src === 'rwy-m') {
+        const m = parseFloat(rmEl.value);
+        rftEl.value = (!isNaN(m) && m > 0) ? Math.round(m * FT_PER_M) : '';
+    } else if (src === 'rwy-ft') {
+        const ft = parseFloat(rftEl.value);
+        rmEl.value = (!isNaN(ft) && ft > 0) ? Math.round(ft / FT_PER_M) : '';
+    } else if (src === 'set-m') {
+        const sm = parseFloat(smEl.value);
+        sftEl.value = !isNaN(sm) ? Math.round(sm * FT_PER_M) : '';
+        document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.remove('active'));
+    } else if (src === 'set-ft') {
+        const sft = parseFloat(sftEl.value);
+        smEl.value = !isNaN(sft) ? Math.round(sft / FT_PER_M) : '';
+        document.querySelectorAll('#locw-presets .preset-chip').forEach(b => b.classList.remove('active'));
+    }
+
+    const rwyM = parseFloat(rmEl.value);
+    const setM = parseFloat(smEl && smEl.value !== '' ? smEl.value : '0') || 0;
+
+    const thetaEl = document.getElementById('locw-theta');
+    const dmsEl = document.getElementById('locw-theta-dms');
+    const halfEl = document.getElementById('locw-half');
+    const statusEl = document.getElementById('locw-status');
+    const distEl = document.getElementById('locw-total-dist');
+    const sensDegEl = document.getElementById('locw-sens-deg');
+
+    if (isNaN(rwyM) || rwyM <= 0) {
+        if (thetaEl) thetaEl.textContent = '-- °';
+        if (dmsEl) dmsEl.textContent = 'Full Sector (150 µA – 150 µA)';
+        if (halfEl) halfEl.textContent = '-- °';
+        if (statusEl) statusEl.textContent = 'Enter runway length';
+        if (distEl) distEl.textContent = '--';
+        if (sensDegEl) sensDegEl.textContent = '--';
+        drawLocWidthViz(0, 0, 0, 0);
+        return;
+    }
+
+    const totalM = rwyM + Math.max(0, setM);
+    const totalFt = totalM * FT_PER_M;
+    const halfRad = Math.atan(LOC_HALF_WIDTH_M / totalM);
+    const halfDeg = halfRad * 180 / Math.PI;
+    const thetaDeg = halfDeg * 2;
+
+    const ddmPerDeg = 0.155 / halfDeg;
+    const uaPerDeg = 150 / halfDeg;
+
+    if (thetaEl) thetaEl.textContent = `${thetaDeg.toFixed(2)}°`;
+    if (dmsEl) dmsEl.textContent = `${fmtDegDMS(thetaDeg)} (${thetaDeg.toFixed(3)}°)`;
+    if (halfEl) halfEl.textContent = `±${halfDeg.toFixed(2)}°`;
+    if (distEl) distEl.textContent = `${fmt(Math.round(totalM))} m  (${fmt(Math.round(totalFt))} ft)`;
+    if (sensDegEl) sensDegEl.textContent = `${ddmPerDeg.toFixed(4)} DDM/° · ${uaPerDeg.toFixed(1)} µA/°`;
+
+    if (statusEl) {
+        if (thetaDeg >= 3.0 && thetaDeg <= 6.0) {
+            statusEl.innerHTML = `<span style="color:var(--green); font-weight:700;">ICAO Standard (3°–6°)</span>`;
+        } else if (thetaDeg > 6.0) {
+            statusEl.innerHTML = `<span style="color:var(--amber); font-weight:700;">> 6.0° (Tailored cap = 6.0°)</span>`;
+        } else {
+            statusEl.innerHTML = `<span style="color:var(--cyan); font-weight:700;">< 3.0° (Long RWY sector)</span>`;
+        }
+    }
+
+    drawLocWidthViz(rwyM, Math.max(0, setM), totalM, thetaDeg);
+}
+
+function drawLocWidthViz(rwyM, setM, totalM, thetaDeg) {
+    const empty = document.getElementById('locw-empty');
+    if (empty) empty.style.display = totalM > 0 ? 'none' : '';
+    const S = V.canvas(document.getElementById('locWidthCanvas'));
+    if (!S) return;
+    const { ctx, w, h } = S;
+    if (totalM <= 0) return;
+
+    const padL = 26, padR = 26, padT = 22, padB = 26;
+    const drawW = w - padL - padR;
+    const cy = (padT + (h - padB)) / 2;
+
+    // Horizontal coordinates: THR on left (xThr), Stop End (xStop), LOC Antenna on right (xLoc)
+    const appM = totalM * 0.18; // show a bit of approach before THR
+    const spanM = appM + totalM * 1.04;
+    const toX = mFromThr => padL + ((mFromThr + appM) / spanM) * drawW;
+
+    const xApp = toX(-appM * 0.85);
+    const xThr = toX(0);
+    const xStop = toX(rwyM);
+    const xLoc = toX(totalM);
+
+    // Visual half-width at threshold (schematic vertical scale so wedge is crisp and readable)
+    const halfGatePx = Math.min(54, Math.max(36, (h - padT - padB) * 0.34));
+    // Slope from LOC antenna (xLoc, cy) through (xThr, cy ± halfGatePx)
+    const yAtX = (x, sign) => cy + sign * halfGatePx * ((xLoc - x) / Math.max(1, xLoc - xThr));
+
+    // Centreline dashed
+    ctx.strokeStyle = V.c('--viz-axis'); ctx.lineWidth = 1; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(padL, cy); ctx.lineTo(w - padR, cy); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Course sector wedge from LOC antenna through THR to approach
+    const grad = ctx.createLinearGradient(xLoc, 0, xApp, 0);
+    grad.addColorStop(0, 'rgba(34,211,238,0.26)');
+    grad.addColorStop(1, 'rgba(34,211,238,0.06)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(xLoc, cy);
+    ctx.lineTo(xApp, yAtX(xApp, -1));
+    ctx.lineTo(xApp, yAtX(xApp, +1));
+    ctx.closePath();
+    ctx.fill();
+
+    // Sector boundary rays (±0.155 DDM / ±150 µA)
+    ctx.strokeStyle = V.c('--cyan'); ctx.lineWidth = 2;
+    [-1, 1].forEach(s => {
+        ctx.beginPath(); ctx.moveTo(xLoc, cy); ctx.lineTo(xApp, yAtX(xApp, s)); ctx.stroke();
+    });
+
+    // Runway strip (THR to Stop End)
+    const rwyHalfH = 10;
+    ctx.fillStyle = '#2b313b'; ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1;
+    ctx.fillRect(xThr, cy - rwyHalfH, Math.max(8, xStop - xThr), rwyHalfH * 2);
+    ctx.strokeRect(xThr, cy - rwyHalfH, Math.max(8, xStop - xThr), rwyHalfH * 2);
+    ctx.fillStyle = '#e5e7eb';
+    for (let x = xThr + 10; x < xStop - 8; x += 16) ctx.fillRect(x, cy - 1, 8, 2);
+
+    // Threshold ±106.7 m (±350 ft) gate line
+    ctx.strokeStyle = V.c('--amber'); ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(xThr, cy - halfGatePx); ctx.lineTo(xThr, cy + halfGatePx); ctx.stroke();
+    [-1, 1].forEach(s => {
+        ctx.fillStyle = V.c('--amber');
+        ctx.beginPath(); ctx.arc(xThr, cy + s * halfGatePx, 3.5, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // LOC antenna marker
+    ctx.fillStyle = V.c('--cyan');
+    ctx.beginPath(); ctx.arc(xLoc, cy, 5, 0, Math.PI * 2); ctx.fill();
+
+    // Dimension line at bottom (THR to LOC)
+    const yDim = h - 10;
+    ctx.strokeStyle = V.c('--muted'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xThr, yDim); ctx.lineTo(xLoc, yDim); ctx.stroke();
+    [xThr, xStop, xLoc].forEach(x => {
+        ctx.beginPath(); ctx.moveTo(x, yDim - 4); ctx.lineTo(x, yDim + 4); ctx.stroke();
+    });
+
+    // Floating labels (automatically hidden when Hide Labels is toggled)
+    V.pill(ctx, `±106.7 m (±350')`, xThr + 6, cy - halfGatePx - 10, { color: V.c('--amber'), size: 10.5 });
+    V.pill(ctx, `θ = ${thetaDeg.toFixed(2)}° (±${(thetaDeg / 2).toFixed(2)}°)`, (xThr + xLoc) * 0.5, cy - halfGatePx * 0.58, { align: 'center', color: V.c('--cyan'), size: 11.5 });
+    V.pill(ctx, `THR`, xThr, cy + halfGatePx + 12, { align: 'center', color: V.c('--amber'), size: 10 });
+    V.pill(ctx, `LOC`, xLoc, cy - 18, { align: 'center', color: V.c('--cyan'), size: 10 });
+    if (!V.labelsHidden(ctx)) {
+        V.font(ctx, 10, 600, true); ctx.fillStyle = V.c('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(`D = ${fmt(Math.round(totalM))} m (${fmt(Math.round(totalM * FT_PER_M))} ft)`, (xThr + xLoc) / 2, yDim - 3);
+    }
+}
+
 App.register('ils', {
     onShow(pane) {
         if (pane === 'profile' || !pane) { calcILS(); if (ilsScene) ilsScene.resize(); }
         if (pane === 'coverage') drawILSCov();
+        if (pane === 'locwidth') calcLocWidth();
     }
 });
 
@@ -6494,7 +6855,7 @@ function drawTheoSetupChart(rows) {
         const wB = r.d / maxD * (s.w - padL - padR);
         V.el(s.el, 'text', { x: padL - 8, y: y + bh / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: r.base ? V.c('--primary') : V.c('--muted'), 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, r.h.toFixed(2) + ' m');
         V.el(s.el, 'rect', { x: padL, y: y + bh * 0.18, width: Math.max(wB, 1), height: bh * 0.64, rx: 4, fill: r.base ? V.c('--primary') : V.c('--cyan'), 'fill-opacity': r.base ? 0.9 : 0.55 });
-        V.el(s.el, 'text', { x: padL + wB + 6, y: y + bh / 2, 'dominant-baseline': 'central', fill: V.c('--text'), 'font-size': 11, 'font-weight': 600, 'font-family': "'JetBrains Mono', monospace" }, r.d.toFixed(2));
+        V.el(s.el, 'text', { 'class': 'viz-lbl', x: padL + wB + 6, y: y + bh / 2, 'dominant-baseline': 'central', fill: V.c('--text'), 'font-size': 11, 'font-weight': 600, 'font-family': "'JetBrains Mono', monospace" }, r.d.toFixed(2));
     });
 }
 
@@ -6722,17 +7083,33 @@ function convertDDM(type, src) {
 }
 
 function updateDDMBar(barEl, uaVal) {
+    if (!barEl) return;
     const pct = Math.min(Math.max(uaVal / 150, -1), 1); // clamp to -1..+1
     const absPct = Math.abs(pct) * 50;
-    if (pct >= 0) {
-        barEl.style.left = '50%';
-        barEl.style.width = absPct + '%';
-    } else {
-        barEl.style.left = (50 - absPct) + '%';
-        barEl.style.width = absPct + '%';
-    }
+    const sc = barEl.closest('.ddm-scale');
+    const isVert = sc && sc.classList.contains('vert');
     const needle = document.getElementById(barEl.id.replace('-bar', '-needle'));
-    if (needle) needle.style.left = (50 + pct * 50) + '%';
+
+    if (isVert) {
+        // Vertical CDI Glideslope: +150 µA at top (0%), 0 at center (50%), -150 µA at bottom (100%)
+        if (pct >= 0) {
+            barEl.style.top = (50 - absPct) + '%';
+            barEl.style.height = absPct + '%';
+        } else {
+            barEl.style.top = '50%';
+            barEl.style.height = absPct + '%';
+        }
+        if (needle) needle.style.top = (50 - pct * 50) + '%';
+    } else {
+        if (pct >= 0) {
+            barEl.style.left = '50%';
+            barEl.style.width = absPct + '%';
+        } else {
+            barEl.style.left = (50 - absPct) + '%';
+            barEl.style.width = absPct + '%';
+        }
+        if (needle) needle.style.left = (50 + pct * 50) + '%';
+    }
 }
 
 function clearDDMConverter() {
@@ -6745,11 +7122,13 @@ function initDDMScales() {
     ['loc', 'gs'].forEach(t => {
         const sc = document.getElementById(`ddm-${t}-scale`);
         if (!sc || sc.querySelector('.tick')) return;
+        const isVert = sc.classList.contains('vert');
         for (let k = -5; k <= 5; k++) {
             if (!k) continue;
             const d = document.createElement('div');
             d.className = 'tick';
-            d.style.left = (50 + k * 10) + '%';
+            if (isVert) d.style.top = (50 + k * 10) + '%';
+            else d.style.left = (50 + k * 10) + '%';
             sc.insertBefore(d, sc.firstChild);
         }
     });

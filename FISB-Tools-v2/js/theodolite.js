@@ -236,7 +236,7 @@ function drawTheoSetupChart(rows) {
         const wB = r.d / maxD * (s.w - padL - padR);
         V.el(s.el, 'text', { x: padL - 8, y: y + bh / 2, 'text-anchor': 'end', 'dominant-baseline': 'central', fill: r.base ? V.c('--primary') : V.c('--muted'), 'font-size': 11, 'font-weight': 700, 'font-family': "'JetBrains Mono', monospace" }, r.h.toFixed(2) + ' m');
         V.el(s.el, 'rect', { x: padL, y: y + bh * 0.18, width: Math.max(wB, 1), height: bh * 0.64, rx: 4, fill: r.base ? V.c('--primary') : V.c('--cyan'), 'fill-opacity': r.base ? 0.9 : 0.55 });
-        V.el(s.el, 'text', { x: padL + wB + 6, y: y + bh / 2, 'dominant-baseline': 'central', fill: V.c('--text'), 'font-size': 11, 'font-weight': 600, 'font-family': "'JetBrains Mono', monospace" }, r.d.toFixed(2));
+        V.el(s.el, 'text', { 'class': 'viz-lbl', x: padL + wB + 6, y: y + bh / 2, 'dominant-baseline': 'central', fill: V.c('--text'), 'font-size': 11, 'font-weight': 600, 'font-family': "'JetBrains Mono', monospace" }, r.d.toFixed(2));
     });
 }
 
