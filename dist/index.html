@@ -2018,6 +2018,49 @@ input.input-invalid {
                                         <div class="result-row"><span class="result-label">Linear Sensitivity (at THR)</span><span
                                                 id="locw-sens-lin" class="result-value c-amber">0.00145 DDM/m · 1.41 µA/m</span></div>
                                     </div>
+                                    <div class="section-label" style="margin-top:18px;">Sector Width at Distance <span class="opt">(from THR, outbound on approach)</span></div>
+                                    <div class="fields c3">
+                                        <div class="field"><label>Distance (m)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-q-m" placeholder="e.g. 7408" step="1"
+                                                    oninput="calcLocWidth('q-m')"><span class="unit">m</span></div>
+                                        </div>
+                                        <div class="field"><label>Distance (ft)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-q-ft" placeholder="e.g. 24304" step="1"
+                                                    oninput="calcLocWidth('q-ft')"><span class="unit">ft</span></div>
+                                        </div>
+                                        <div class="field"><label>Distance (NM)</label>
+                                            <div class="input-wrap"><input type="number" inputmode="decimal"
+                                                    id="locw-q-nm" placeholder="e.g. 4" step="0.1"
+                                                    oninput="calcLocWidth('q-nm')"><span class="unit">NM</span></div>
+                                        </div>
+                                    </div>
+                                    <div class="preset-chips" id="locw-q-presets">
+                                        <button type="button" class="preset-chip" onclick="setLocQueryNM(1, this)">1 NM</button>
+                                        <button type="button" class="preset-chip" onclick="setLocQueryNM(4, this)">4 NM (OM)</button>
+                                        <button type="button" class="preset-chip" onclick="setLocQueryNM(10, this)">10 NM</button>
+                                        <button type="button" class="preset-chip" onclick="setLocQueryNM(18, this)">18 NM</button>
+                                    </div>
+                                    <div class="stats" style="margin-top:12px;">
+                                        <div class="stat hero t-amber">
+                                            <div class="k">Full Width (edge – edge)</div>
+                                            <div class="v" id="locw-q-full">-- m</div>
+                                            <div class="s" id="locw-q-full-alt">150 µA L ↔ 150 µA R</div>
+                                        </div>
+                                        <div class="stat hero t-green">
+                                            <div class="k">Half Width (CL → edge)</div>
+                                            <div class="v" id="locw-q-half">-- m</div>
+                                            <div class="s" id="locw-q-half-alt">0.155 DDM / 150 µA</div>
+                                        </div>
+                                    </div>
+                                    <div class="readout" style="margin-top:14px;">
+                                        <div class="result-row"><span class="result-label">Dist from LOC Antenna</span><span
+                                                id="locw-q-fromloc" class="result-value c-primary">--</span></div>
+                                        <div class="result-row"><span class="result-label">Linear Sensitivity (at Dist)</span><span
+                                                id="locw-q-sens" class="result-value c-amber">--</span></div>
+                                    </div>
+                                    <p class="panel-note" style="margin-top:10px;">Edge = full-scale deflection (±0.155 DDM / ±150 µA). Width grows linearly from the LOC antenna: half-width = 106.68 m × (D + d) / D. Negative distance = point between THR and the LOC antenna.</p>
                                 </div>
                             </div>
                             <div class="col">
@@ -6581,7 +6624,72 @@ function setLocSetbackFt(ftVal, btn) {
     calcLocWidth('preset');
 }
 
+const M_PER_NM = 1852;
+
+function setLocQueryNM(nm, btn) {
+    const qm = document.getElementById('locw-q-m');
+    const qft = document.getElementById('locw-q-ft');
+    const qnm = document.getElementById('locw-q-nm');
+    if (qnm) qnm.value = nm;
+    if (qm) qm.value = Math.round(nm * M_PER_NM);
+    if (qft) qft.value = Math.round(nm * M_PER_NM * FT_PER_M);
+    document.querySelectorAll('#locw-q-presets .preset-chip').forEach(b => b.classList.toggle('active', b === btn));
+    calcLocWidth('q-preset');
+}
+
+// Updates the "width at distance" readouts; returns query distance (m from THR) or NaN
+function calcLocQuery(src, totalM) {
+    const qm = document.getElementById('locw-q-m');
+    const qft = document.getElementById('locw-q-ft');
+    const qnm = document.getElementById('locw-q-nm');
+    if (!qm || !qft || !qnm) return NaN;
+
+    if (src === 'q-m' || src === 'q-ft' || src === 'q-nm') {
+        let m = NaN;
+        if (src === 'q-m') m = parseFloat(qm.value);
+        else if (src === 'q-ft') m = parseFloat(qft.value) / FT_PER_M;
+        else m = parseFloat(qnm.value) * M_PER_NM;
+        const ok = !isNaN(m);
+        if (src !== 'q-m') qm.value = ok ? Math.round(m) : '';
+        if (src !== 'q-ft') qft.value = ok ? Math.round(m * FT_PER_M) : '';
+        if (src !== 'q-nm') qnm.value = ok ? +(m / M_PER_NM).toFixed(3) : '';
+        document.querySelectorAll('#locw-q-presets .preset-chip').forEach(b => b.classList.remove('active'));
+    }
+
+    const ids = ['locw-q-full', 'locw-q-full-alt', 'locw-q-half', 'locw-q-half-alt', 'locw-q-fromloc', 'locw-q-sens'];
+    const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+    const set = (id, t) => { if (el[id]) el[id].textContent = t; };
+    const blank = () => {
+        set('locw-q-full', '-- m'); set('locw-q-full-alt', '150 µA L ↔ 150 µA R');
+        set('locw-q-half', '-- m'); set('locw-q-half-alt', '0.155 DDM / 150 µA');
+        set('locw-q-fromloc', '--'); set('locw-q-sens', '--');
+    };
+
+    // Distance from THR (m); the metre field is the shared value (rounded to 1 m)
+    const dq = parseFloat(qm.value);
+    if (!(totalM > 0) || isNaN(dq)) { blank(); return NaN; }
+
+    const fromLoc = totalM + dq;
+    if (fromLoc <= 0) {
+        blank();
+        set('locw-q-full-alt', 'Point is behind LOC antenna');
+        return NaN;
+    }
+    const halfM = LOC_HALF_WIDTH_M * fromLoc / totalM;
+    const fullM = halfM * 2;
+    const fmtLen = m => m >= 1000 ? fmt(Math.round(m)) : m.toFixed(1);
+    set('locw-q-full', `${fmtLen(fullM)} m`);
+    set('locw-q-full-alt', `${fmt(Math.round(fullM * FT_PER_M))} ft · ${(fullM / M_PER_NM).toFixed(3)} NM`);
+    set('locw-q-half', `±${fmtLen(halfM)} m`);
+    set('locw-q-half-alt', `±${fmt(Math.round(halfM * FT_PER_M))} ft · ±${(halfM / M_PER_NM).toFixed(3)} NM`);
+    set('locw-q-fromloc', `${fmt(Math.round(fromLoc))} m  (${(fromLoc / M_PER_NM).toFixed(2)} NM)`);
+    set('locw-q-sens', `${(0.155 / halfM).toPrecision(3)} DDM/m · ${(150 / halfM).toPrecision(3)} µA/m`);
+    return dq;
+}
+
 function resetLocWidth() {
+    ['locw-q-m', 'locw-q-ft', 'locw-q-nm'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    document.querySelectorAll('#locw-q-presets .preset-chip').forEach(b => b.classList.remove('active'));
     const rmEl = document.getElementById('locw-rwy-m');
     const rftEl = document.getElementById('locw-rwy-ft');
     const smEl = document.getElementById('locw-set-m');
@@ -6643,6 +6751,7 @@ function calcLocWidth(src) {
         if (statusEl) statusEl.textContent = 'Enter runway length';
         if (distEl) distEl.textContent = '--';
         if (sensDegEl) sensDegEl.textContent = '--';
+        calcLocQuery(src, 0);
         drawLocWidthViz(0, 0, 0, 0);
         return;
     }
@@ -6672,10 +6781,11 @@ function calcLocWidth(src) {
         }
     }
 
-    drawLocWidthViz(rwyM, Math.max(0, setM), totalM, thetaDeg);
+    const dq = calcLocQuery(src, totalM);
+    drawLocWidthViz(rwyM, Math.max(0, setM), totalM, thetaDeg, dq);
 }
 
-function drawLocWidthViz(rwyM, setM, totalM, thetaDeg) {
+function drawLocWidthViz(rwyM, setM, totalM, thetaDeg, dq) {
     const empty = document.getElementById('locw-empty');
     if (empty) empty.style.display = totalM > 0 ? 'none' : '';
     const S = V.canvas(document.getElementById('locWidthCanvas'));
@@ -6688,7 +6798,8 @@ function drawLocWidthViz(rwyM, setM, totalM, thetaDeg) {
     const cy = (padT + (h - padB)) / 2;
 
     // Horizontal coordinates: THR on left (xThr), Stop End (xStop), LOC Antenna on right (xLoc)
-    const appM = totalM * 0.18; // show a bit of approach before THR
+    const hasQ = typeof dq === 'number' && !isNaN(dq);
+    const appM = Math.max(totalM * 0.18, hasQ ? dq * 1.12 : 0); // approach before THR (extends to query point)
     const spanM = appM + totalM * 1.04;
     const toX = mFromThr => padL + ((mFromThr + appM) / spanM) * drawW;
 
@@ -6698,7 +6809,11 @@ function drawLocWidthViz(rwyM, setM, totalM, thetaDeg) {
     const xLoc = toX(totalM);
 
     // Visual half-width at threshold (schematic vertical scale so wedge is crisp and readable)
-    const halfGatePx = Math.min(54, Math.max(36, (h - padT - padB) * 0.34));
+    // When the view is stretched for a far query point, shrink the gate so the far edge still fits
+    const maxHalfPx = (h - padT - padB) / 2 - 4;
+    const halfGatePx = Math.max(4, Math.min(54, Math.max(36, (h - padT - padB) * 0.34),
+        maxHalfPx * (xLoc - xThr) / Math.max(1, xLoc - xApp)));
+    const lblGate = Math.max(halfGatePx, 24);
     // Slope from LOC antenna (xLoc, cy) through (xThr, cy ± halfGatePx)
     const yAtX = (x, sign) => cy + sign * halfGatePx * ((xLoc - x) / Math.max(1, xLoc - xThr));
 
@@ -6741,6 +6856,18 @@ function drawLocWidthViz(rwyM, setM, totalM, thetaDeg) {
         ctx.beginPath(); ctx.arc(xThr, cy + s * halfGatePx, 3.5, 0, Math.PI * 2); ctx.fill();
     });
 
+    // Query point: width at distance
+    let xQ = NaN;
+    if (hasQ) {
+        xQ = toX(dq);
+        const yT = yAtX(xQ, -1), yB = yAtX(xQ, +1);
+        ctx.strokeStyle = V.c('--violet'); ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
+        ctx.beginPath(); ctx.moveTo(xQ, yT); ctx.lineTo(xQ, yB); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = V.c('--violet');
+        [yT, yB].forEach(y => { ctx.beginPath(); ctx.arc(xQ, y, 3.5, 0, Math.PI * 2); ctx.fill(); });
+    }
+
     // LOC antenna marker
     ctx.fillStyle = V.c('--cyan');
     ctx.beginPath(); ctx.arc(xLoc, cy, 5, 0, Math.PI * 2); ctx.fill();
@@ -6754,9 +6881,15 @@ function drawLocWidthViz(rwyM, setM, totalM, thetaDeg) {
     });
 
     // Floating labels (automatically hidden when Hide Labels is toggled)
-    V.pill(ctx, `±106.7 m (±350')`, xThr + 6, cy - halfGatePx - 10, { color: V.c('--amber'), size: 10.5 });
-    V.pill(ctx, `θ = ${thetaDeg.toFixed(2)}° (±${(thetaDeg / 2).toFixed(2)}°)`, (xThr + xLoc) * 0.5, cy - halfGatePx * 0.58, { align: 'center', color: V.c('--cyan'), size: 11.5 });
-    V.pill(ctx, `THR`, xThr, cy + halfGatePx + 12, { align: 'center', color: V.c('--amber'), size: 10 });
+    V.pill(ctx, `±106.7 m (±350')`, xThr + 6, cy - lblGate - 10, { color: V.c('--amber'), size: 10.5 });
+    V.pill(ctx, `θ = ${thetaDeg.toFixed(2)}° (±${(thetaDeg / 2).toFixed(2)}°)`, (xThr + xLoc) * 0.5, cy - lblGate * 0.58 - (lblGate > halfGatePx ? 14 : 0), { align: 'center', color: V.c('--cyan'), size: 11.5 });
+    V.pill(ctx, `THR`, xThr, cy + lblGate + 12, { align: 'center', color: V.c('--amber'), size: 10 });
+    if (hasQ) {
+        const fullM = 2 * LOC_HALF_WIDTH_M * (totalM + dq) / totalM;
+        const wTxt = fullM >= 1000 ? fmt(Math.round(fullM)) : fullM.toFixed(1);
+        V.pill(ctx, `W = ${wTxt} m @ ${(dq / M_PER_NM).toFixed(2)} NM`, Math.max(xQ, padL + 70), yAtX(xQ, -1) - 10,
+            { align: 'center', color: V.c('--violet'), size: 10.5 });
+    }
     V.pill(ctx, `LOC`, xLoc, cy - 18, { align: 'center', color: V.c('--cyan'), size: 10 });
     if (!V.labelsHidden(ctx)) {
         V.font(ctx, 10, 600, true); ctx.fillStyle = V.c('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
