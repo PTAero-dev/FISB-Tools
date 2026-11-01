@@ -11,8 +11,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>">
+    <meta name="apple-mobile-web-app-title" content="FISB Tools">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <title>AEROTHAI_FISB tools_NOV 26</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -223,6 +225,10 @@
                     <p id="page-sub"></p>
                 </div>
                 <div class="topbar-actions">
+                    <button class="btn sm ghost" id="btn-install-app" onclick="openInstallAppModal()"
+                        title="Install Offline App / Download HTML"><svg class="i sm">
+                            <use href="#ic-down" />
+                        </svg><span class="hide-phone">Install App</span></button>
                     <button class="btn icon ghost theme-btn" onclick="toggleTheme()"
                         title="Toggle day / night theme"><svg class="i">
                             <use href="#ic-sun" />
@@ -2133,7 +2139,10 @@
                     <use href="#ic-moon" />
                 </svg>Theme</button>
         </div>
-        <div style="text-align:center; font-size:11px; color:var(--muted); margin-top:14px;">© AEROTHAI – Capt.Prach ·
+        <button class="btn primary block" style="margin-top:10px; height:40px;" onclick="closeSheet(); openInstallAppModal();">
+            <svg class="i sm"><use href="#ic-down" /></svg>Install Offline App / Download HTML
+        </button>
+        <div style="text-align:center; font-size:11px; color:var(--muted); margin-top:12px;">© AEROTHAI – Capt.Prach ·
             FISB Tools NOV 26</div>
     </div>
     <div class="toast" id="toast"></div>

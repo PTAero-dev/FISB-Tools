@@ -493,3 +493,88 @@ function toggleVizPanel(el, forceCollapse) {
         }, 30);
     }
 }
+
+// =========================================================
+// OFFLINE PWA & STANDALONE HTML DOWNLOADER
+// =========================================================
+let _deferredInstallPrompt = null;
+
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _deferredInstallPrompt = e;
+    const btn = document.getElementById('btn-install-app');
+    if (btn) btn.classList.add('accent');
+});
+
+window.addEventListener('appinstalled', () => {
+    _deferredInstallPrompt = null;
+    notify('FISB Tools installed for offline use!', false);
+});
+
+async function triggerPWAInstall() {
+    if (_deferredInstallPrompt) {
+        _deferredInstallPrompt.prompt();
+        const { outcome } = await _deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') _deferredInstallPrompt = null;
+        const m = document.getElementById('pwa-install-modal');
+        if (m) m.classList.remove('open');
+        return;
+    }
+    notify('Use your browser menu ("Add to Home Screen" or "Install App") or download the offline HTML below.', false);
+}
+
+function downloadOfflineHTML() {
+    try {
+        const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+        downloadText(htmlContent, 'FISB tools-AEROTHAI_NOV 26.html', 'text/html;charset=utf-8');
+        notify('Downloaded standalone offline HTML file!', false);
+    } catch (e) {
+        notify('Download failed on this browser.', true);
+    }
+}
+
+function openInstallAppModal() {
+    let modal = document.getElementById('pwa-install-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pwa-install-modal';
+        modal.className = 'dev-modal-backdrop';
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.remove('open');
+        });
+        document.body.appendChild(modal);
+    }
+    const hasNativePrompt = !!_deferredInstallPrompt;
+    modal.innerHTML = `
+        <div class="dev-modal-card" style="max-width:400px; text-align:left; border-color:rgba(34,211,238,0.45); cursor:default;">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                <div class="mobile-brand" style="display:grid; width:40px; height:40px; border-radius:10px;"><svg class="i"><use href="#ic-logo"/></svg></div>
+                <div style="flex:1;">
+                    <div style="font-size:15px; font-weight:800; color:var(--text);">Install Offline App</div>
+                    <div style="font-size:11.5px; color:var(--green); font-weight:700;">✓ Cached for 100% Offline Flight Use</div>
+                </div>
+                <button class="btn icon sm ghost" onclick="document.getElementById('pwa-install-modal').classList.remove('open')"><svg class="i sm"><use href="#ic-x"/></svg></button>
+            </div>
+            ${hasNativePrompt ? `
+            <button class="btn primary block" style="height:42px; margin-bottom:12px; font-size:14px;" onclick="triggerPWAInstall()">
+                <svg class="i sm"><use href="#ic-down"/></svg>Install FISB Tools App Now
+            </button>` : ''}
+            <div style="font-size:12.5px; color:var(--text-2); line-height:1.5; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:12px;">
+                <div style="font-weight:700; color:var(--cyan); margin-bottom:4px;">📱 Install on Mobile Home Screen:</div>
+                <div>• <b>Android (Chrome):</b> Tap <b>⋮</b> (top-right) → <b>Install app</b> or <b>Add to Home screen</b>.</div>
+                <div style="margin-top:4px;">• <b>iPhone / iPad (Safari):</b> Tap <b>Share</b> (bottom bar) → <b>Add to Home Screen</b>.</div>
+            </div>
+            <button class="btn accent block" style="height:40px; width:100%;" onclick="downloadOfflineHTML()">
+                <svg class="i sm"><use href="#ic-down"/></svg>Download Single-File Offline HTML
+            </button>
+            <div style="text-align:center; font-size:11px; color:var(--muted); margin-top:8px;">Saves <b>FISB tools-AEROTHAI_NOV 26.html</b> directly to your device</div>
+        </div>
+    `;
+    requestAnimationFrame(() => modal.classList.add('open'));
+}
