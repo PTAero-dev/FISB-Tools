@@ -20,7 +20,6 @@ const left = html.match(/(href|src)="(css|js)\/[^"]+"/g);
 if (left) { console.error('Unbundled references remain:', left); process.exit(1); }
 
 const outputs = [
-    path.join(root, 'FISB-Tools-v2-single.html'),
     path.join(root, '..', 'dist', 'index.html'),
     path.join(root, '..', 'FISB tools-AEROTHAI_NOV 26.html')
 ];
