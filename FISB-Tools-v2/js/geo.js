@@ -7,19 +7,76 @@ const DEG = 180 / Math.PI;
 
 function getCoordInputHTML(prefix, labelSuffix) {
     const box = (ax, label, dMax, dLen) => `
-        <div class="cbox">
-            <div class="cl">${label} ${labelSuffix}<em>DMS · DMM</em></div>
+        <div class="cbox" id="${prefix}-${ax}-cbox">
+            <div class="cl">${label} ${labelSuffix} <span style="opacity:.65;font-weight:500;">(≤${dMax}°)</span><em>DMS · DMM</em></div>
             <div class="trip">
-                <input type="text" inputmode="decimal" id="${prefix}-${ax}-d" placeholder="Deg" maxlength="${dLen}" oninput="checkCoordLimit(this,${dMax},true); autoTab(this,${dLen},'${prefix}-${ax}-m'); calcProjDMS('${prefix}-${ax}', ${ax === 'lat'})">
-                <input type="text" inputmode="decimal" id="${prefix}-${ax}-m" placeholder="Min" maxlength="2" oninput="checkCoordLimit(this,60,false); autoTab(this,2,'${prefix}-${ax}-s'); calcProjDMS('${prefix}-${ax}', ${ax === 'lat'})">
-                <input type="text" inputmode="decimal" id="${prefix}-${ax}-s" placeholder="Sec.ss" maxlength="5" oninput="calcProjDMS('${prefix}-${ax}', ${ax === 'lat'})">
+                <input type="text" inputmode="numeric" id="${prefix}-${ax}-d" placeholder="0-${dMax}" maxlength="${dLen}" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this,${dMax},true)) autoTab(this,${dLen},'${prefix}-${ax}-m'); calcProjDMS('${prefix}-${ax}', ${ax === 'lat'})">
+                <input type="text" inputmode="numeric" id="${prefix}-${ax}-m" placeholder="0-59" maxlength="2" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this,60,false)) autoTab(this,2,'${prefix}-${ax}-s'); calcProjDMS('${prefix}-${ax}', ${ax === 'lat'})">
+                <input type="text" inputmode="decimal" id="${prefix}-${ax}-s" placeholder="<60.0" maxlength="5" oninput="sanitizeCoordInput(this,true); checkCoordLimit(this,60,false); calcProjDMS('${prefix}-${ax}', ${ax === 'lat'})">
             </div>
             <div class="pair dmm-row">
-                <input type="text" inputmode="decimal" id="${prefix}-${ax}-dd" placeholder="Deg" maxlength="${dLen}" oninput="checkCoordLimit(this,${dMax},true); autoTab(this,${dLen},'${prefix}-${ax}-dm'); calcProjDMM('${prefix}-${ax}', ${ax === 'lat'})">
-                <input type="text" inputmode="decimal" id="${prefix}-${ax}-dm" placeholder="Min.mm" maxlength="5" oninput="calcProjDMM('${prefix}-${ax}', ${ax === 'lat'})">
+                <input type="text" inputmode="numeric" id="${prefix}-${ax}-dd" placeholder="0-${dMax}" maxlength="${dLen}" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this,${dMax},true)) autoTab(this,${dLen},'${prefix}-${ax}-dm'); calcProjDMM('${prefix}-${ax}', ${ax === 'lat'})">
+                <input type="text" inputmode="decimal" id="${prefix}-${ax}-dm" placeholder="<60.00" maxlength="5" oninput="sanitizeCoordInput(this,true); checkCoordLimit(this,60,false); calcProjDMM('${prefix}-${ax}', ${ax === 'lat'})">
             </div>
+            <div class="coord-err" id="${prefix}-${ax}-err"></div>
         </div>`;
     return `<div class="coord-in">${box('lat', 'LAT', 90, 2)}${box('lon', 'LONG', 180, 3)}</div>`;
+}
+
+function validateProjCoordBox(prefix, isLat, mode) {
+    const axisName = isLat ? 'LAT' : 'LONG';
+    const maxDeg = isLat ? 90 : 180;
+    const elD = document.getElementById(`${prefix}-d`);
+    const elM = document.getElementById(`${prefix}-m`);
+    const elS = document.getElementById(`${prefix}-s`);
+    const elDD = document.getElementById(`${prefix}-dd`);
+    const elDM = document.getElementById(`${prefix}-dm`);
+    const cbox = document.getElementById(`${prefix}-cbox`);
+    const errEl = document.getElementById(`${prefix}-err`);
+    const msgs = [];
+
+    if (mode === 'dms') {
+        const d = elD && elD.value !== '' ? parseFloat(elD.value) : NaN;
+        const m = elM && elM.value !== '' ? parseFloat(elM.value) : NaN;
+        const s = elS && elS.value !== '' ? parseFloat(elS.value) : NaN;
+        let dBad = !isNaN(d) && (d < 0 || d > maxDeg);
+        let mBad = !isNaN(m) && (m < 0 || m >= 60);
+        let sBad = !isNaN(s) && (s < 0 || s >= 60);
+        if (dBad) msgs.push(`${axisName} Deg must be 0–${maxDeg}°`);
+        if (mBad) msgs.push(`${axisName} Min must be 0–59' (< 60)`);
+        if (sBad) msgs.push(`${axisName} Sec must be < 60.00"`);
+        if (!dBad && d === maxDeg && ((m || 0) > 0 || (s || 0) > 0)) {
+            dBad = true;
+            if ((m || 0) > 0) mBad = true;
+            if ((s || 0) > 0) sBad = true;
+            msgs.push(`${axisName} cannot exceed ${maxDeg}° 00' 00"`);
+        }
+        setFieldInvalid(elD, dBad);
+        setFieldInvalid(elM, mBad);
+        setFieldInvalid(elS, sBad);
+        if (!msgs.length) { setFieldInvalid(elDD, false); setFieldInvalid(elDM, false); }
+    } else {
+        const dd = elDD && elDD.value !== '' ? parseFloat(elDD.value) : NaN;
+        const dm = elDM && elDM.value !== '' ? parseFloat(elDM.value) : NaN;
+        let ddBad = !isNaN(dd) && (dd < 0 || dd > maxDeg);
+        let dmBad = !isNaN(dm) && (dm < 0 || dm >= 60);
+        if (ddBad) msgs.push(`${axisName} Deg must be 0–${maxDeg}°`);
+        if (dmBad) msgs.push(`${axisName} Min.mm must be < 60.00'`);
+        if (!ddBad && dd === maxDeg && (dm || 0) > 0) {
+            ddBad = true; dmBad = true;
+            msgs.push(`${axisName} cannot exceed ${maxDeg}° 00.00'`);
+        }
+        setFieldInvalid(elDD, ddBad);
+        setFieldInvalid(elDM, dmBad);
+        if (!msgs.length) { setFieldInvalid(elD, false); setFieldInvalid(elM, false); setFieldInvalid(elS, false); }
+    }
+
+    if (cbox) cbox.classList.toggle('has-err', msgs.length > 0);
+    if (errEl) {
+        errEl.textContent = msgs.length ? '⚠ ' + msgs.join(' · ') : '';
+        errEl.classList.toggle('show', msgs.length > 0);
+    }
+    return msgs.length === 0;
 }
 
 function initProjectorInputs() {
@@ -33,6 +90,7 @@ function initProjectorInputs() {
 }
 
 function calcProjDMS(prefix, isLat) {
+    if (!validateProjCoordBox(prefix, isLat, 'dms')) return;
     let d = parseFloat(document.getElementById(`${prefix}-d`).value) || 0;
     let m = parseFloat(document.getElementById(`${prefix}-m`).value) || 0;
     let s = parseFloat(document.getElementById(`${prefix}-s`).value) || 0;
@@ -50,6 +108,7 @@ function calcProjDMS(prefix, isLat) {
 }
 
 function calcProjDMM(prefix, isLat) {
+    if (!validateProjCoordBox(prefix, isLat, 'dmm')) return;
     let dStr = document.getElementById(`${prefix}-dd`).value;
     let mmStr = document.getElementById(`${prefix}-dm`).value;
     let d = parseFloat(dStr) || 0;
@@ -503,12 +562,23 @@ function exportForeFlight() {
     downloadText(csv, 'user_waypoints.csv');
 }
 
+function clearCoordBoxErr(prefix) {
+    ['lat', 'lon'].forEach(ax => {
+        ['d', 'm', 's', 'dd', 'dm'].forEach(suf => setFieldInvalid(document.getElementById(`${prefix}-${ax}-${suf}`), false));
+        const cbox = document.getElementById(`${prefix}-${ax}-cbox`);
+        const err = document.getElementById(`${prefix}-${ax}-err`);
+        if (cbox) cbox.classList.remove('has-err');
+        if (err) { err.textContent = ''; err.classList.remove('show'); }
+    });
+}
+
 function clearRFArc() {
     ['d', 'm', 's', 'dd', 'dm'].forEach(suf => {
         clearIds(`prf1-lat-${suf}`, `prf1-lon-${suf}`);
         clearIds(`prfs-lat-${suf}`, `prfs-lon-${suf}`);
         clearIds(`prfe-lat-${suf}`, `prfe-lon-${suf}`);
     });
+    ['prf1', 'prfs', 'prfe'].forEach(clearCoordBoxErr);
     clearIds('rf-radius', 'rf-start-rad', 'rf-end-rad');
     document.getElementById('rf-interval').value = '1';
     document.getElementById('rf-results-tbody').innerHTML = '';
@@ -532,6 +602,9 @@ function clearProjector(mode) {
             clearIds(`po1-lat-${suf}`, `po1-lon-${suf}`);
         }
     });
+    if (mode === 'modeA') { clearCoordBoxErr('pa1'); clearCoordBoxErr('pa2'); }
+    else if (mode === 'modeB') clearCoordBoxErr('pb1');
+    else if (mode === 'modeO') clearCoordBoxErr('po1');
     if (mode === 'modeA') {
         clearIds('proj-a-dist');
         document.getElementById('proj-a-azik').textContent = '-- °';

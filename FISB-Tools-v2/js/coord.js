@@ -3,64 +3,162 @@
 // =========================================================
 const COORD_ROW_COUNT = 24; // 12 waypoints × (lat, lon)
 
-function validateCompoundLimit(idx, isLat, isDMS) {
-    let d, m, s, mm;
-    let maxDeg = isLat ? 90 : 180;
-    let valid = true;
+function sanitizeCoordInput(input, allowDecimal) {
+    if (!input) return;
+    let v = input.value;
+    if (allowDecimal) {
+        v = v.replace(/[^0-9.]/g, '');
+        const parts = v.split('.');
+        if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+    } else {
+        v = v.replace(/[^0-9]/g, '');
+    }
+    if (input.value !== v) input.value = v;
+}
 
-    if (isDMS) {
-        d = parseFloat(document.getElementById(`c-d-${idx}`).value) || 0;
-        m = parseFloat(document.getElementById(`c-m-${idx}`).value) || 0;
-        s = parseFloat(document.getElementById(`c-s-${idx}`).value) || 0;
-        if (d > maxDeg) valid = false;
-        if (d === maxDeg && (m > 0 || s > 0)) valid = false;
+function setFieldInvalid(el, isInvalid) {
+    if (!el) return;
+    el.classList.toggle('input-invalid', !!isInvalid);
+    el.style.borderColor = isInvalid ? 'var(--red)' : '';
+    el.style.color = isInvalid ? 'var(--red)' : '';
+}
 
+// Validate a single coordinate axis (idx: odd = LAT, even = LONG)
+// mode: 'dms' or 'dmm'
+function validateCoordAxis(idx, mode) {
+    const isLat = (idx % 2 !== 0);
+    const axisName = isLat ? 'LAT' : 'LONG';
+    const maxDeg = isLat ? 90 : 180;
+    const errors = [];
+
+    const elD = document.getElementById(`c-d-${idx}`);
+    const elM = document.getElementById(`c-m-${idx}`);
+    const elS = document.getElementById(`c-s-${idx}`);
+    const elDD = document.getElementById(`c-dd-${idx}`);
+    const elDM = document.getElementById(`c-dm-${idx}`);
+
+    if (mode === 'dms') {
+        const dStr = elD ? elD.value.trim() : '';
+        const mStr = elM ? elM.value.trim() : '';
+        const sStr = elS ? elS.value.trim() : '';
+        const d = dStr === '' ? NaN : parseFloat(dStr);
+        const m = mStr === '' ? NaN : parseFloat(mStr);
+        const s = sStr === '' ? NaN : parseFloat(sStr);
+
+        let dBad = !isNaN(d) && (d < 0 || d > maxDeg);
+        let mBad = !isNaN(m) && (m < 0 || m >= 60);
+        let sBad = !isNaN(s) && (s < 0 || s >= 60);
+
+        if (dBad) errors.push(`${axisName} Deg must be 0–${maxDeg}°`);
+        if (mBad) errors.push(`${axisName} Min must be 0–59' (< 60)`);
+        if (sBad) errors.push(`${axisName} Sec must be < 60"`);
+
+        if (!dBad && d === maxDeg) {
+            if (!isNaN(m) && m > 0) { mBad = true; dBad = true; }
+            if (!isNaN(s) && s > 0) { sBad = true; dBad = true; }
+            if (mBad || sBad) errors.push(`${axisName} cannot exceed ${maxDeg}° 00' 00"`);
+        }
+
+        setFieldInvalid(elD, dBad);
+        setFieldInvalid(elM, mBad);
+        setFieldInvalid(elS, sBad);
+        if (errors.length === 0) {
+            setFieldInvalid(elDD, false);
+            setFieldInvalid(elDM, false);
+        }
+    } else {
+        const ddStr = elDD ? elDD.value.trim() : '';
+        const dmStr = elDM ? elDM.value.trim() : '';
+        const dd = ddStr === '' ? NaN : parseFloat(ddStr);
+        const dm = dmStr === '' ? NaN : parseFloat(dmStr);
+
+        let ddBad = !isNaN(dd) && (dd < 0 || dd > maxDeg);
+        let dmBad = !isNaN(dm) && (dm < 0 || dm >= 60);
+
+        if (ddBad) errors.push(`${axisName} Deg must be 0–${maxDeg}°`);
+        if (dmBad) errors.push(`${axisName} Min.mm must be < 60.00'`);
+
+        if (!ddBad && dd === maxDeg && !isNaN(dm) && dm > 0) {
+            ddBad = true;
+            dmBad = true;
+            errors.push(`${axisName} cannot exceed ${maxDeg}° 00.00'`);
+        }
+
+        setFieldInvalid(elDD, ddBad);
+        setFieldInvalid(elDM, dmBad);
+        if (errors.length === 0) {
+            setFieldInvalid(elD, false);
+            setFieldInvalid(elM, false);
+            setFieldInvalid(elS, false);
+        }
+    }
+
+    updateWaypointErrorState(Math.ceil(idx / 2));
+    return errors.length === 0;
+}
+
+function updateWaypointErrorState(wptNum) {
+    const latIdx = 2 * wptNum - 1;
+    const lonIdx = 2 * wptNum;
+    const card = document.getElementById(`wpt-${wptNum}`);
+    const errEl = document.getElementById(`wpt-err-${wptNum}`);
+    if (!card || !errEl) return;
+
+    const msgs = [];
+    const checkPair = (idx, axisName, maxDeg) => {
         const elD = document.getElementById(`c-d-${idx}`);
         const elM = document.getElementById(`c-m-${idx}`);
         const elS = document.getElementById(`c-s-${idx}`);
-        const color = valid ? "" : "var(--accent-danger)";
-        if (d > maxDeg || (d === maxDeg && (m > 0 || s > 0))) elD.style.borderColor = color;
-        if (d === maxDeg && m > 0) elM.style.borderColor = color;
-        if (d === maxDeg && s > 0) elS.style.borderColor = color;
-        if (valid) {
-            elD.style.borderColor = "";
-            elM.style.borderColor = "";
-            elS.style.borderColor = "";
-        }
-    } else {
-        d = parseFloat(document.getElementById(`c-dd-${idx}`).value) || 0;
-        mm = parseFloat(document.getElementById(`c-dm-${idx}`).value) || 0;
-        if (d > maxDeg) valid = false;
-        if (d === maxDeg && mm > 0) valid = false;
+        const elDD = document.getElementById(`c-dd-${idx}`);
+        const elDM = document.getElementById(`c-dm-${idx}`);
 
-        const elD = document.getElementById(`c-dd-${idx}`);
-        const elMM = document.getElementById(`c-dm-${idx}`);
-        const color = valid ? "" : "var(--accent-danger)";
-        if (d > maxDeg || (d === maxDeg && mm > 0)) elD.style.borderColor = color;
-        if (d === maxDeg && mm > 0) elMM.style.borderColor = color;
-        if (valid) {
-            elD.style.borderColor = "";
-            elMM.style.borderColor = "";
+        const d = elD && elD.value !== '' ? parseFloat(elD.value) : NaN;
+        const m = elM && elM.value !== '' ? parseFloat(elM.value) : NaN;
+        const s = elS && elS.value !== '' ? parseFloat(elS.value) : NaN;
+        const dd = elDD && elDD.value !== '' ? parseFloat(elDD.value) : NaN;
+        const dm = elDM && elDM.value !== '' ? parseFloat(elDM.value) : NaN;
+
+        if ((!isNaN(d) && d > maxDeg) || (!isNaN(dd) && dd > maxDeg)) {
+            msgs.push(`${axisName} Degree exceeds ${maxDeg}° limit (0–${maxDeg}°)`);
         }
+        if (!isNaN(m) && m >= 60) {
+            msgs.push(`${axisName} Minutes must be 0–59' (< 60)`);
+        }
+        if (!isNaN(s) && s >= 60) {
+            msgs.push(`${axisName} Seconds must be < 60.00"`);
+        }
+        if (!isNaN(dm) && dm >= 60) {
+            msgs.push(`${axisName} Decimal Minutes must be < 60.00'`);
+        }
+        if ((d === maxDeg && ((m || 0) > 0 || (s || 0) > 0)) || (dd === maxDeg && (dm || 0) > 0)) {
+            msgs.push(`${axisName} total cannot exceed ${maxDeg}° 00' 00"`);
+        }
+    };
+
+    checkPair(latIdx, 'LAT', 90);
+    checkPair(lonIdx, 'LONG', 180);
+
+    const hasErr = msgs.length > 0;
+    card.classList.toggle('has-err', hasErr);
+    if (hasErr) {
+        errEl.textContent = '⚠ ' + msgs.join(' · ');
+        errEl.classList.add('show');
+    } else {
+        errEl.textContent = '';
+        errEl.classList.remove('show');
     }
-    return valid;
 }
 
 function checkCoordLimit(input, max, isDegree) {
+    sanitizeCoordInput(input, !isDegree && input.placeholder && input.placeholder.includes('.'));
     const val = parseFloat(input.value);
     if (isNaN(val)) {
-        input.style.borderColor = "";
+        setFieldInvalid(input, false);
         return true;
     }
-    // isDegree: allow val == max (e.g. 90). Otherwise strictly < max (e.g. 60 invalid).
-    const invalid = isDegree ? (val > max) : (val >= max);
-    if (invalid) {
-        input.style.borderColor = "var(--accent-danger)";
-        return false;
-    } else {
-        input.style.borderColor = "";
-        return true;
-    }
+    const invalid = isDegree ? (val < 0 || val > max) : (val < 0 || val >= max);
+    setFieldInvalid(input, invalid);
+    return !invalid;
 }
 
 function initCoordRows() {
@@ -81,35 +179,38 @@ function initCoordRows() {
                 <button class="btn icon sm danger-ghost" onclick="clearCoordRow(${latId}); clearCoordRow(${longId});" title="Clear waypoint"><svg class="i sm"><use href="#ic-x"/></svg></button>
             </div>
             <div class="wpt-grid">
-                <div></div><div class="colh">Lat</div><div class="colh">Long</div>
+                <div></div><div class="colh">Lat <span style="opacity:.65;font-weight:500;">(≤90°)</span></div><div class="colh">Long <span style="opacity:.65;font-weight:500;">(≤180°)</span></div>
                 <div class="rl">DMS</div>
                 <div class="trip">
-                    <input type="text" inputmode="decimal" id="c-d-${latId}" placeholder="Deg" maxlength="2" oninput="checkCoordLimit(this, 90, true); autoTab(this, 2, 'c-m-${latId}'); calcCoordDMS(${latId})">
-                    <input type="text" inputmode="decimal" id="c-m-${latId}" placeholder="Min" maxlength="2" oninput="if(checkCoordLimit(this, 60)) autoTab(this, 2, 'c-s-${latId}'); calcCoordDMS(${latId})">
-                    <input type="text" inputmode="decimal" id="c-s-${latId}" placeholder="Sec" maxlength="5" oninput="checkCoordLimit(this, 60); autoTab(this, 5, 'c-d-${longId}'); calcCoordDMS(${latId})">
+                    <input type="text" inputmode="numeric" id="c-d-${latId}" placeholder="0-90" maxlength="2" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this, 90, true)) autoTab(this, 2, 'c-m-${latId}'); calcCoordDMS(${latId})">
+                    <input type="text" inputmode="numeric" id="c-m-${latId}" placeholder="0-59" maxlength="2" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this, 60, false)) autoTab(this, 2, 'c-s-${latId}'); calcCoordDMS(${latId})">
+                    <input type="text" inputmode="decimal" id="c-s-${latId}" placeholder="<60.0" maxlength="5" oninput="sanitizeCoordInput(this,true); if(checkCoordLimit(this, 60, false)) autoTab(this, 5, 'c-d-${longId}'); calcCoordDMS(${latId})">
                 </div>
                 <div class="trip">
-                    <input type="text" inputmode="decimal" id="c-d-${longId}" placeholder="Deg" maxlength="3" oninput="checkCoordLimit(this, 180, true); autoTab(this, 3, 'c-m-${longId}'); calcCoordDMS(${longId})">
-                    <input type="text" inputmode="decimal" id="c-m-${longId}" placeholder="Min" maxlength="2" oninput="if(checkCoordLimit(this, 60)) autoTab(this, 2, 'c-s-${longId}'); calcCoordDMS(${longId})">
-                    <input type="text" inputmode="decimal" id="c-s-${longId}" placeholder="Sec" maxlength="5" oninput="checkCoordLimit(this, 60); calcCoordDMS(${longId})">
+                    <input type="text" inputmode="numeric" id="c-d-${longId}" placeholder="0-180" maxlength="3" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this, 180, true)) autoTab(this, 3, 'c-m-${longId}'); calcCoordDMS(${longId})">
+                    <input type="text" inputmode="numeric" id="c-m-${longId}" placeholder="0-59" maxlength="2" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this, 60, false)) autoTab(this, 2, 'c-s-${longId}'); calcCoordDMS(${longId})">
+                    <input type="text" inputmode="decimal" id="c-s-${longId}" placeholder="<60.0" maxlength="5" oninput="sanitizeCoordInput(this,true); checkCoordLimit(this, 60, false); calcCoordDMS(${longId})">
                 </div>
                 <div class="rl">DMM</div>
                 <div class="pair dmm-row">
-                    <input type="text" inputmode="decimal" id="c-dd-${latId}" placeholder="Deg" maxlength="2" oninput="checkCoordLimit(this, 90, true); autoTab(this, 2, 'c-dm-${latId}'); calcCoordDMM(${latId})">
-                    <input type="text" inputmode="decimal" id="c-dm-${latId}" placeholder="Min.mm" maxlength="5" oninput="autoTab(this, 5, 'c-dd-${longId}'); calcCoordDMM(${latId})">
+                    <input type="text" inputmode="numeric" id="c-dd-${latId}" placeholder="0-90" maxlength="2" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this, 90, true)) autoTab(this, 2, 'c-dm-${latId}'); calcCoordDMM(${latId})">
+                    <input type="text" inputmode="decimal" id="c-dm-${latId}" placeholder="<60.00" maxlength="5" oninput="sanitizeCoordInput(this,true); if(checkCoordLimit(this, 60, false)) autoTab(this, 5, 'c-dd-${longId}'); calcCoordDMM(${latId})">
                 </div>
                 <div class="pair dmm-row">
-                    <input type="text" inputmode="decimal" id="c-dd-${longId}" placeholder="Deg" maxlength="3" oninput="checkCoordLimit(this, 180, true); autoTab(this, 3, 'c-dm-${longId}'); calcCoordDMM(${longId})">
-                    <input type="text" inputmode="decimal" id="c-dm-${longId}" placeholder="Min.mm" maxlength="5" oninput="calcCoordDMM(${longId})">
+                    <input type="text" inputmode="numeric" id="c-dd-${longId}" placeholder="0-180" maxlength="3" oninput="sanitizeCoordInput(this,false); if(checkCoordLimit(this, 180, true)) autoTab(this, 3, 'c-dm-${longId}'); calcCoordDMM(${longId})">
+                    <input type="text" inputmode="decimal" id="c-dm-${longId}" placeholder="<60.00" maxlength="5" oninput="sanitizeCoordInput(this,true); checkCoordLimit(this, 60, false); calcCoordDMM(${longId})">
                 </div>
-            </div>`;
+            </div>
+            <div class="coord-err" id="wpt-err-${i}"></div>`;
         container.appendChild(card);
     }
     container.addEventListener('input', scheduleCoordPlot);
 }
 
 function calcCoordDMS(idx) {
-    // Source: DMS -> Target: DMM
+    // Validate DMS inputs first; do not overwrite DMM if DMS is out of bounds
+    if (!validateCoordAxis(idx, 'dms')) return;
+
     let d = parseFloat(document.getElementById(`c-d-${idx}`).value);
     let m = parseFloat(document.getElementById(`c-m-${idx}`).value);
     let s = parseFloat(document.getElementById(`c-s-${idx}`).value);
@@ -124,11 +225,13 @@ function calcCoordDMS(idx) {
     let mmFixed = mm.toFixed(2);
     let [mmInt, mmDec] = mmFixed.split(".");
     document.getElementById(`c-dm-${idx}`).value = mmInt.padStart(2, "0") + "." + mmDec;
-    validateCompoundLimit(idx, isLat, true);
+    updateWaypointErrorState(Math.ceil(idx / 2));
 }
 
 function calcCoordDMM(idx) {
-    // Source: DMM -> Target: DMS
+    // Validate DMM inputs first; do not overwrite DMS if DMM is out of bounds
+    if (!validateCoordAxis(idx, 'dmm')) return;
+
     let d = parseFloat(document.getElementById(`c-dd-${idx}`).value);
     let mm = parseFloat(document.getElementById(`c-dm-${idx}`).value);
     if (isNaN(d)) d = 0;
@@ -143,12 +246,16 @@ function calcCoordDMM(idx) {
     let sFixed = s.toFixed(2);
     let [sInt, sDec] = sFixed.split(".");
     document.getElementById(`c-s-${idx}`).value = sInt.padStart(2, "0") + "." + sDec;
-    validateCompoundLimit(idx, isLat, false);
+    updateWaypointErrorState(Math.ceil(idx / 2));
 }
 
 function clearCoordRow(idx) {
     clearIds(`c-d-${idx}`, `c-m-${idx}`, `c-s-${idx}`, `c-dd-${idx}`, `c-dm-${idx}`);
-    [`c-d-${idx}`, `c-m-${idx}`, `c-s-${idx}`, `c-dd-${idx}`, `c-dm-${idx}`].forEach(id => { const el = document.getElementById(id); if (el) el.style.borderColor = ''; });
+    [`c-d-${idx}`, `c-m-${idx}`, `c-s-${idx}`, `c-dd-${idx}`, `c-dm-${idx}`].forEach(id => {
+        const el = document.getElementById(id);
+        setFieldInvalid(el, false);
+    });
+    updateWaypointErrorState(Math.ceil(idx / 2));
     scheduleCoordPlot();
 }
 
@@ -305,6 +412,11 @@ function getCoordWaypoints() {
         const sum = document.getElementById(`wpt-sum-${n}`);
         const any = [latD, latM, latS, lonD, lonM, lonS].some(x => !isNaN(x));
         if (card) card.classList.toggle('filled', any);
+        if (card && card.classList.contains('has-err')) {
+            if (sum) { sum.textContent = 'Invalid input'; sum.style.color = 'var(--red)'; }
+            continue;
+        }
+        if (sum) sum.style.color = '';
         if (isNaN(latD) || isNaN(lonD)) { if (sum) sum.textContent = ''; continue; }
         const lat = latD + (latM || 0) / 60 + (latS || 0) / 3600;
         const lon = lonD + (lonM || 0) / 60 + (lonS || 0) / 3600;

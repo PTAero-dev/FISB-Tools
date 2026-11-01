@@ -568,6 +568,26 @@ details.ref summary { cursor: pointer; font-size: 13px; font-weight: 600; color:
 .wpt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
 .wpt { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px 14px; }
 .wpt.filled { border-color: rgba(79, 140, 255, 0.35); }
+.wpt.has-err, .coord-in .cbox.has-err { border-color: rgba(248, 113, 113, 0.65) !important; }
+input.input-invalid {
+    color: var(--red) !important;
+    border-color: var(--red) !important;
+    background: var(--red-soft) !important;
+    font-weight: 700 !important;
+}
+.coord-err {
+    display: none;
+    margin-top: 8px;
+    padding: 5px 8px;
+    border-radius: 7px;
+    background: var(--red-soft);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    color: var(--red);
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+.coord-err.show { display: block; }
 .wpt-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .wpt-head b { font-size: 12px; letter-spacing: 0.08em; color: var(--primary); }
 .wpt-head .spacer { flex: 1; }
