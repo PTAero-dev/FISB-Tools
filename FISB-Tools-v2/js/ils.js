@@ -50,47 +50,48 @@ function drawILSViz(distNM, gpa, hat, targetMSL, tch) {
     const { ctx, w, h } = S;
     if (distNM <= 0) return;
 
-    const padLeft = 58, padRight = 120, padTop = 30, padBot = 36;
+    const padLeft = 48, padRight = 22, padTop = 20, padBot = 32;
     const drawW = w - padLeft - padRight, drawH = h - padTop - padBot;
-    const rwyNM = Math.min(distNM * 0.18, 1.2);
-    const minX = -rwyNM, maxX = distNM * 1.12;
+    const rwyNM = Math.min(distNM * 0.14, 0.9);
+    const minX = -rwyNM, maxX = distNM * 1.10;
     const toX = nm => padLeft + (nm - minX) / (maxX - minX) * drawW; // runway left, approach from the right
-    const maxY = hat * 1.3;
+    // Gentle vertical scale (~22° visual slope) so glidepath doesn't look overly steep on portrait phones
+    const maxY = Math.max(hat * 1.65, 400);
     const toY = alt => (h - padBot) - (alt / maxY) * drawH;
     const yG = h - padBot;
 
     // sky & ground
     const sky = ctx.createLinearGradient(0, padTop, 0, yG);
     sky.addColorStop(0, V.c('--sky-top')); sky.addColorStop(1, V.c('--sky-bot'));
-    ctx.fillStyle = sky; ctx.fillRect(padLeft, padTop - 10, drawW + padRight - 10, yG - padTop + 10);
-    ctx.fillStyle = V.c('--ground'); ctx.fillRect(padLeft, yG, drawW + padRight - 10, padBot - 18);
+    ctx.fillStyle = sky; ctx.fillRect(padLeft, padTop - 6, drawW, yG - padTop + 6);
+    ctx.fillStyle = V.c('--ground'); ctx.fillRect(padLeft, yG, drawW, padBot - 16);
 
     // grid
     V.font(ctx, 10, 500, true); ctx.fillStyle = V.c('--muted');
     ctx.strokeStyle = V.c('--viz-grid'); ctx.lineWidth = 1;
-    const stepY = V.niceStep(maxY, 5);
+    const stepY = V.niceStep(maxY, 3);
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     for (let a = 0; a <= maxY; a += stepY) {
         ctx.beginPath(); ctx.moveTo(padLeft, toY(a)); ctx.lineTo(padLeft + drawW, toY(a)); ctx.stroke();
         ctx.fillText(fmt(Math.round(a)), padLeft - 6, toY(a));
     }
-    const stepX = V.niceStep(maxX, 6);
+    const stepX = V.niceStep(maxX, drawW < 230 ? 4 : 6);
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    for (let x = 0; x <= maxX; x += stepX) {
+    for (let x = stepX; x <= maxX; x += stepX) {
         ctx.beginPath(); ctx.moveTo(toX(x), padTop); ctx.lineTo(toX(x), yG); ctx.stroke();
-        ctx.fillText(+x.toFixed(2), toX(x), yG + 4);
+        ctx.fillText(+x.toFixed(1), toX(x), yG + 5);
     }
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillText('ft HAT', 6, padTop - 14);
-    ctx.textAlign = 'center'; ctx.fillText('NM from THR', padLeft + drawW / 2, h - 3);
+    ctx.fillText('ft HAT', 6, 13);
+    ctx.textAlign = 'right'; ctx.fillText('NM from THR', padLeft + drawW, h - 3);
 
-    // runway
+    // runway & THR label (replaces 0 on X-axis so it never overlaps)
     const xThr = toX(0);
-    ctx.fillStyle = '#2b313b'; ctx.fillRect(toX(minX), yG - 3, toX(0) - toX(minX), 6);
+    ctx.fillStyle = '#2b313b'; ctx.fillRect(toX(minX), yG - 3, xThr - toX(minX), 6);
     ctx.fillStyle = '#e5e7eb';
-    for (let x = toX(0) - 8; x > toX(minX) + 6; x -= 14) ctx.fillRect(x - 5, yG - 0.75, 6, 1.5);
-    V.font(ctx, 10.5, 800); ctx.fillStyle = V.c('--text'); ctx.textAlign = 'center';
-    ctx.fillText('THR', xThr, yG + 18);
+    for (let x = xThr - 6; x > toX(minX) + 4; x -= 12) ctx.fillRect(x - 4, yG - 0.75, 5, 1.5);
+    V.font(ctx, 10, 800, true); ctx.fillStyle = V.c('--amber'); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText('THR', xThr, yG + 5);
 
     // GP extension (dashed) + GP
     const gpY = nm => toY(tch + nm * FT_PER_NM * Math.tan(gpa * Math.PI / 180));
@@ -102,18 +103,17 @@ function drawILSViz(distNM, gpa, hat, targetMSL, tch) {
     fill.addColorStop(0, 'rgba(245,185,66,0.22)'); fill.addColorStop(1, 'rgba(245,185,66,0.02)');
     ctx.fillStyle = fill;
     ctx.beginPath(); ctx.moveTo(xThr, yTch); ctx.lineTo(xTarget, yTarget); ctx.lineTo(xTarget, yG); ctx.lineTo(xThr, yG); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = V.c('--amber'); ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.strokeStyle = V.c('--amber'); ctx.lineWidth = 2.5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(xThr, yTch); ctx.lineTo(xTarget, yTarget); ctx.stroke();
 
-    // TCH
+    // TCH dot + angle arc
     ctx.fillStyle = V.c('--amber'); ctx.beginPath(); ctx.arc(xThr, yTch, 4, 0, Math.PI * 2); ctx.fill();
-    V.pill(ctx, `TCH ${tch}'`, xThr - 8, yTch - 16, { align: 'right', color: V.c('--amber'), size: 10.5 });
-    // angle arc
     const angPx = Math.atan2(yTch - yTarget, xTarget - xThr);
+    const arcR = Math.min(44, Math.max(24, (xTarget - xThr) * 0.28));
     ctx.strokeStyle = V.c('--amber'); ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.arc(xThr, yTch, 60, -angPx, 0); ctx.stroke();
-    V.font(ctx, 11, 700, true); ctx.fillStyle = V.c('--amber'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(`${gpa}°`, xThr + 66, yTch - 10);
+    ctx.beginPath(); ctx.arc(xThr, yTch, arcR, -angPx, 0); ctx.stroke();
+    V.font(ctx, 10.5, 700, true); ctx.fillStyle = V.c('--amber'); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(`${gpa}° (TCH ${tch}')`, xThr + arcR + 5, yTch - 8);
 
     // drop line
     ctx.strokeStyle = V.c('--primary'); ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
@@ -121,18 +121,19 @@ function drawILSViz(distNM, gpa, hat, targetMSL, tch) {
 
     // aircraft glyph at capture
     ctx.save(); ctx.translate(xTarget, yTarget); ctx.rotate(Math.atan2(yTch - yTarget, xThr - xTarget) + Math.PI);
-    ctx.scale(-1.2, 1.2);
+    ctx.scale(-1.05, 1.05);
     ctx.fillStyle = V.c('--text');
     ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(10, -2.5); ctx.lineTo(15, 0); ctx.lineTo(10, 2.5); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-1, -1); ctx.lineTo(-6, -10); ctx.lineTo(-2, -10); ctx.lineTo(5, -1); ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.moveTo(-12, -1); ctx.lineTo(-15, -7); ctx.lineTo(-12, -7); ctx.lineTo(-8, -1); ctx.closePath(); ctx.fill();
     ctx.restore();
-    ctx.fillStyle = V.c('--green'); ctx.beginPath(); ctx.arc(xTarget, yTarget, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = V.c('--green'); ctx.beginPath(); ctx.arc(xTarget, yTarget, 3.5, 0, Math.PI * 2); ctx.fill();
 
-    // labels
-    const lx = Math.min(xTarget + 14, w - 112);
-    V.pill(ctx, `GP ${fmt(Math.round(targetMSL))}' MSL`, lx, yTarget - 26, { color: V.c('--cyan'), size: 12 });
-    V.pill(ctx, `${distNM.toFixed(1)} NM · ${fmt(Math.round(hat))}' HAT`, lx, yTarget + 0, { color: V.c('--text-2'), size: 10.5, weight: 600 });
+    // Non-clipping labels: align to the left of the aircraft so they stay 100% inside the plot
+    const lx = Math.max(padLeft + 140, xTarget - 14);
+    const ly = Math.max(padTop + 14, yTarget - 18);
+    V.pill(ctx, `GP ${fmt(Math.round(targetMSL))}' MSL`, lx, ly, { align: 'right', color: V.c('--cyan'), size: 11.5 });
+    V.pill(ctx, `${distNM.toFixed(1)} NM · ${fmt(Math.round(hat))}' HAT`, lx, ly + 22, { align: 'right', color: V.c('--text-2'), size: 10.5, weight: 600 });
 }
 
 // --- ILS COVERAGE ---
