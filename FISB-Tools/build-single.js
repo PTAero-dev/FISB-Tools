@@ -22,8 +22,7 @@ const left = html.match(/(href|src)="(css|js)\/[^"]+"/g);
 if (left) { console.error('Unbundled references remain:', left); process.exit(1); }
 
 const outputs = [
-    path.join(distDir, 'index.html'),
-    path.join(root, '..', 'FISB tools-AEROTHAI_NOV 26.html')
+    path.join(distDir, 'index.html')
 ];
 outputs.forEach(out => {
     fs.writeFileSync(out, html);
