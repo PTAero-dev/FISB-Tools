@@ -2043,40 +2043,54 @@
                         </div>
                     </div>
 
-                    <div class="pane" data-pane="alt" data-label="Altimeter">
-                        <div class="panel" style="max-width:620px;">
+                                        <div class="pane" data-pane="alt" data-label="Altimeter">
+                        <div class="panel" style="max-width:680px;">
                             <div class="panel-head">
-                                <h2>Altimeter Setting <span class="sub">QNH → STD</span></h2><span
+                                <h2>Altimeter Setting <span class="sub">QNH → STD (ICAO ISA Exact)</span></h2><span
                                     class="spacer"></span>
                                 <button class="btn sm danger-ghost"
-                                    onclick="clearIds('alt-qnh','alt-read'); document.getElementById('alt-corr').innerText='-- ft'; document.getElementById('alt-palt').innerText='-- ft';"><svg
+                                    onclick="clearAltimeter()"><svg
                                         class="i sm">
                                         <use href="#ic-reset" />
                                     </svg>Clear</button>
                             </div>
                             <div class="panel-body">
-                                <div class="fields">
-                                    <div class="field"><label>QNH</label>
-                                        <div class="input-wrap"><input type="number" inputmode="decimal" id="alt-qnh"
-                                                placeholder="1013" oninput="calcAltimeter()"><span
+                                <div class="fields three">
+                                    <div class="field"><label>QNH (hPa)</label>
+                                        <div class="input-wrap"><input type="number" inputmode="decimal" step="0.01" id="alt-qnh"
+                                                placeholder="1013.25" oninput="calcAltimeter('hpa')"><span
                                                 class="unit">hPa</span></div>
                                     </div>
-                                    <div class="field"><label>Reading</label>
-                                        <div class="input-wrap"><input type="number" inputmode="decimal" id="alt-read"
-                                                placeholder="7000" oninput="calcAltimeter()"><span
+                                    <div class="field"><label>QNH (inHg)</label>
+                                        <div class="input-wrap"><input type="number" inputmode="decimal" step="0.01" id="alt-inhg"
+                                                placeholder="29.92" oninput="calcAltimeter('inhg')"><span
+                                                class="unit">inHg</span></div>
+                                    </div>
+                                    <div class="field"><label>Reading (Indicated)</label>
+                                        <div class="input-wrap"><input type="number" inputmode="decimal" step="any" id="alt-read"
+                                                placeholder="7000" oninput="calcAltimeter('read')"><span
                                                 class="unit">ft</span></div>
                                     </div>
                                 </div>
                                 <div class="stats" style="margin-top:14px;">
                                     <div class="stat hero t-primary">
-                                        <div class="k">Correction</div>
+                                        <div class="k">ISA Exact Correction</div>
                                         <div class="v" id="alt-corr">-- ft</div>
-                                        <div class="s">(1013.25 − QNH) × 30 ft</div>
+                                        <div class="s" id="alt-corr-sub">145442.16 × [1 − (QNH / 1013.25)^0.190263]</div>
                                     </div>
                                     <div class="stat hero t-cyan">
-                                        <div class="k">Pressure Alt (1013.25)</div>
+                                        <div class="k">Pressure Alt (STD 1013.25)</div>
                                         <div class="v" id="alt-palt">-- ft</div>
+                                        <div class="s" id="alt-palt-sub">Indicated Alt + Δh(ISA)</div>
                                     </div>
+                                </div>
+                                <div class="readout-list" style="margin-top:12px;">
+                                    <div class="readout-row"><span class="k">ICAO ISA Exact (Power Law)</span><span
+                                            class="v" id="alt-ref-isa">-- ft</span></div>
+                                    <div class="readout-row"><span class="k">ISA Sea-Level Linear (27.31 ft/hPa)</span><span
+                                            class="v" id="alt-ref-27">-- ft</span></div>
+                                    <div class="readout-row"><span class="k">Rule of Thumb (30.00 ft/hPa)</span><span
+                                            class="v" id="alt-ref-30">-- ft</span></div>
                                 </div>
                             </div>
                         </div>

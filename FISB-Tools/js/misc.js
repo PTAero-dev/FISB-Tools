@@ -1,6 +1,19 @@
 // =========================================================
 // CONVERTERS — fuel, units, altimeter, Morse, DDM (logic from v1.1)
 // =========================================================
+const EXACT_FT_PER_NM = 1852 / 0.3048;       // 6076.115485564304
+const EXACT_L_PER_GAL = 3.785411784;         // Exact US gallon in liters
+const EXACT_KG_PER_LB = 0.45359237;          // Exact avoirdupois pound in kg
+const EXACT_HPA_PER_INHG = 33.8638866667;    // Exact inHg to hPa (0°C)
+
+// ICAO Doc 7488 Standard Atmosphere constants:
+// T0 = 288.15 K, L = 0.0065 K/m = 0.0019812 K/ft, T0 / L_ft = 145442.156 ft
+// R * L / g0 = (287.05287 * 0.0065) / 9.80665 = 0.1902632365
+const ISA_T0_OVER_L_FT = 288.15 / (0.0065 * 0.3048); // 145442.15581
+const ISA_EXPONENT = (287.05287 * 0.0065) / 9.80665; // 0.1902632365
+const ISA_P0_HPA = 1013.25;
+const ISA_SL_FT_PER_HPA = ISA_T0_OVER_L_FT * ISA_EXPONENT / ISA_P0_HPA; // 27.30946 ft/hPa at 1013.25
+
 function calcFuel(src) {
     let sg = parseFloat(document.getElementById('fuel-sg').value) || 0.8;
     if (sg <= 0) sg = 0.8;
@@ -10,23 +23,22 @@ function calcFuel(src) {
     let lbs = parseFloat(document.getElementById('fuel-lbs').value);
     let kg = parseFloat(document.getElementById('fuel-kg').value);
 
-    let baseLiters = 0;
+    let baseLiters = NaN;
     if (src === 'liters') baseLiters = lit;
-    else if (src === 'gal') baseLiters = gal * 3.78541;
+    else if (src === 'gal') baseLiters = gal * EXACT_L_PER_GAL;
     else if (src === 'kg') baseLiters = kg / sg;
-    else if (src === 'lbs') baseLiters = (lbs * 0.453592) / sg;
+    else if (src === 'lbs') baseLiters = (lbs * EXACT_KG_PER_LB) / sg;
     else if (src === 'sg') {
-        // If SG changes, re-calc based on what's filled (liters as master)
         if (!isNaN(lit)) baseLiters = lit;
-        else if (!isNaN(gal)) baseLiters = gal * 3.78541;
+        else if (!isNaN(gal)) baseLiters = gal * EXACT_L_PER_GAL;
     }
 
     if (isNaN(baseLiters)) return;
 
     if (src !== 'liters') document.getElementById('fuel-liters').value = baseLiters.toFixed(2);
-    if (src !== 'gal') document.getElementById('fuel-gal').value = (baseLiters / 3.78541).toFixed(2);
+    if (src !== 'gal') document.getElementById('fuel-gal').value = (baseLiters / EXACT_L_PER_GAL).toFixed(2);
     if (src !== 'kg') document.getElementById('fuel-kg').value = (baseLiters * sg).toFixed(2);
-    if (src !== 'lbs') document.getElementById('fuel-lbs').value = ((baseLiters * sg) * 2.20462).toFixed(2);
+    if (src !== 'lbs') document.getElementById('fuel-lbs').value = ((baseLiters * sg) / EXACT_KG_PER_LB).toFixed(2);
 }
 
 function convDist(src) {
@@ -35,33 +47,35 @@ function convDist(src) {
     let nm = 0;
     if (src === 'nm') nm = val;
     else if (src === 'm') nm = val / 1852;
-    else if (src === 'ft') nm = val / 6076.12;
+    else if (src === 'ft') nm = val / EXACT_FT_PER_NM;
     else if (src === 'km') nm = val / 1.852;
     if (src !== 'nm') document.getElementById('u-nm').value = nm.toFixed(4);
     if (src !== 'm') document.getElementById('u-m').value = (nm * 1852).toFixed(2);
-    if (src !== 'ft') document.getElementById('u-ft').value = (nm * 6076.12).toFixed(2);
+    if (src !== 'ft') document.getElementById('u-ft').value = (nm * EXACT_FT_PER_NM).toFixed(2);
     if (src !== 'km') document.getElementById('u-km').value = (nm * 1.852).toFixed(4);
 }
 
 function convSpeed(src) {
     const val = parseFloat(document.getElementById(`u-${src}`).value);
     if (isNaN(val)) return;
+    const MPH_PER_KT = 1852 / 1609.344; // 1.150779448
+    const MPS_PER_KT = 1852 / 3600;     // 0.514444444
     let kts = 0;
     if (src === 'kts') kts = val;
-    else if (src === 'mph') kts = val / 1.15078;
+    else if (src === 'mph') kts = val / MPH_PER_KT;
     else if (src === 'kph') kts = val / 1.852;
-    else if (src === 'mps') kts = val * 1.94384;
+    else if (src === 'mps') kts = val / MPS_PER_KT;
     if (src !== 'kts') document.getElementById('u-kts').value = kts.toFixed(2);
-    if (src !== 'mph') document.getElementById('u-mph').value = (kts * 1.15078).toFixed(2);
+    if (src !== 'mph') document.getElementById('u-mph').value = (kts * MPH_PER_KT).toFixed(2);
     if (src !== 'kph') document.getElementById('u-kph').value = (kts * 1.852).toFixed(2);
-    if (src !== 'mps') document.getElementById('u-mps').value = (kts / 1.94384).toFixed(2);
+    if (src !== 'mps') document.getElementById('u-mps').value = (kts * MPS_PER_KT).toFixed(2);
 }
 
 function convPress(src) {
     const val = parseFloat(document.getElementById(`u-${src}`).value);
     if (isNaN(val)) return;
-    if (src === 'hpa') document.getElementById('u-inhg').value = (val * 0.02953).toFixed(3);
-    else document.getElementById('u-hpa').value = (val * 33.8639).toFixed(1);
+    if (src === 'hpa') document.getElementById('u-inhg').value = (val / EXACT_HPA_PER_INHG).toFixed(3);
+    else document.getElementById('u-hpa').value = (val * EXACT_HPA_PER_INHG).toFixed(2);
 }
 
 function convGrad(src) {
@@ -76,24 +90,73 @@ function convGrad(src) {
     }
 }
 
-function calcAltimeter() {
-    const qnh = parseFloat(document.getElementById('alt-qnh').value);
-    const read = parseFloat(document.getElementById('alt-read').value);
-    if (!isNaN(qnh)) {
-        // (1013.25 - QNH) * 30 ft per hPa — e.g. 1010 → +97.5 ft
-        let diff = (1013.25 - qnh) * 30;
-        let sign = diff >= 0 ? "+" : "";
-        document.getElementById('alt-corr').innerText = `${sign}${Math.round(diff)} ft`;
+function calcAltimeter(src) {
+    const qnhEl = document.getElementById('alt-qnh');
+    const inhgEl = document.getElementById('alt-inhg');
+    const readEl = document.getElementById('alt-read');
+    if (!qnhEl) return;
+
+    if (src === 'hpa' && inhgEl) {
+        const h = parseFloat(qnhEl.value);
+        inhgEl.value = (!isNaN(h) && h > 0) ? (h / EXACT_HPA_PER_INHG).toFixed(2) : '';
+    } else if (src === 'inhg' && inhgEl) {
+        const ig = parseFloat(inhgEl.value);
+        qnhEl.value = (!isNaN(ig) && ig > 0) ? (ig * EXACT_HPA_PER_INHG).toFixed(2) : '';
+    }
+
+    const qnh = parseFloat(qnhEl.value);
+    const read = readEl ? parseFloat(readEl.value) : NaN;
+    const corrEl = document.getElementById('alt-corr');
+    const corrSubEl = document.getElementById('alt-corr-sub');
+    const paltEl = document.getElementById('alt-palt');
+    const paltSubEl = document.getElementById('alt-palt-sub');
+    const refIsaEl = document.getElementById('alt-ref-isa');
+    const ref27El = document.getElementById('alt-ref-27');
+    const ref30El = document.getElementById('alt-ref-30');
+
+    if (!isNaN(qnh) && qnh > 0) {
+        // Exact ICAO Doc 7488 ISA barometric formula:
+        // Δh = 145442.16 * (1 - (QNH / 1013.25)^0.19026324)
+        const diffISA = ISA_T0_OVER_L_FT * (1 - Math.pow(qnh / ISA_P0_HPA, ISA_EXPONENT));
+        const diff27 = (ISA_P0_HPA - qnh) * ISA_SL_FT_PER_HPA;
+        const diff30 = (ISA_P0_HPA - qnh) * 30;
+
+        const fmtSigned = (v, dec = 1) => `${v >= 0 ? '+' : ''}${v.toFixed(dec)} ft`;
+        const fmtAlt = (v, dec = 1) => `${v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })} ft`;
+
+        corrEl.innerText = fmtSigned(diffISA, 1);
+        if (corrSubEl) corrSubEl.innerText = `Rounded: ${diffISA >= 0 ? '+' : ''}${Math.round(diffISA)} ft  ·  145442.16 × [1 − (QNH/1013.25)^0.190263]`;
+
         if (!isNaN(read)) {
-            let pAlt = read + diff;
-            document.getElementById('alt-palt').innerText = `${Math.round(pAlt).toLocaleString()} ft`;
+            const pAltISA = read + diffISA;
+            const pAlt27 = read + diff27;
+            const pAlt30 = read + diff30;
+            paltEl.innerText = fmtAlt(pAltISA, 1);
+            if (paltSubEl) paltSubEl.innerText = `Rounded: ${Math.round(pAltISA).toLocaleString('en-US')} ft`;
+            if (refIsaEl) refIsaEl.innerText = `${fmtSigned(diffISA, 2)}  →  ${fmtAlt(pAltISA, 1)}`;
+            if (ref27El) ref27El.innerText = `${fmtSigned(diff27, 2)}  →  ${fmtAlt(pAlt27, 1)}`;
+            if (ref30El) ref30El.innerText = `${fmtSigned(diff30, 1)}  →  ${fmtAlt(pAlt30, 1)}`;
         } else {
-            document.getElementById('alt-palt').innerText = "-- ft";
+            paltEl.innerText = "-- ft";
+            if (paltSubEl) paltSubEl.innerText = "Indicated Reading + ISA Correction";
+            if (refIsaEl) refIsaEl.innerText = fmtSigned(diffISA, 2);
+            if (ref27El) ref27El.innerText = fmtSigned(diff27, 2);
+            if (ref30El) ref30El.innerText = fmtSigned(diff30, 1);
         }
     } else {
-        document.getElementById('alt-corr').innerText = "-- ft";
-        document.getElementById('alt-palt').innerText = "-- ft";
+        corrEl.innerText = "-- ft";
+        if (corrSubEl) corrSubEl.innerText = "145442.16 × [1 − (QNH / 1013.25)^0.190263]";
+        paltEl.innerText = "-- ft";
+        if (paltSubEl) paltSubEl.innerText = "Indicated Reading + ISA Correction";
+        if (refIsaEl) refIsaEl.innerText = "--";
+        if (ref27El) ref27El.innerText = "--";
+        if (ref30El) ref30El.innerText = "--";
     }
+}
+
+function clearAltimeter() {
+    clearIds('alt-qnh', 'alt-inhg', 'alt-read');
+    calcAltimeter();
 }
 
 // --- MORSE ---
