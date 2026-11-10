@@ -48,7 +48,13 @@ function clearIds(...ids) {
             return;
         }
         const el = document.getElementById(id);
-        if (el) el.value = "";
+        if (el) {
+            el.value = "";
+            if (el.dataset) {
+                delete el.dataset.manual;
+                delete el.dataset.auto;
+            }
+        }
     });
 
     // Trigger recalc if prefix provided

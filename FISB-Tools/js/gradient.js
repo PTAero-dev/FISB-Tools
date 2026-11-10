@@ -23,7 +23,7 @@ function legCardHTML(id, num, prevEndAlt, prevEndDist, isFirst) {
             <div class="field"><label>Angle <span class="opt">(optional)</span></label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-angle-in" placeholder="Calc" class="alt-input" onchange="calculateGradient('${id}', 'angle')"><span class="unit">°</span></div></div>
         </div>
         <div class="fields c3" style="margin-top:12px;">
-            <div class="field"><label>Leg Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-dist" placeholder="e.g. 5.0" onchange="calculateGradient('${id}', 'dist')"><span class="unit">NM</span></div></div>
+            <div class="field"><label>Leg Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-dist" placeholder="e.g. 5.0" oninput="calculateGradient('${id}', 'dist')"><span class="unit">NM</span></div></div>
             <div class="field"><label>Start Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-sdist" placeholder="--" value="${prevEndDist}" onchange="calculateGradient('${id}', 'sDist')"><span class="unit">NM</span></div></div>
             <div class="field"><label>End Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-edist" placeholder="--" onchange="calculateGradient('${id}', 'eDist')"><span class="unit">NM</span></div></div>
         </div>
@@ -163,34 +163,81 @@ function calculateGradient(prefix, source) {
     let angIn = parseFloat(angleInput ? angleInput.value : NaN);
     let pctIn = parseFloat(pctInput ? pctInput.value : NaN);
 
-    // --- 2. PERCENT <-> ANGLE SYNC ---
-    if (source === 'pct' && !isNaN(pctIn)) {
-        angIn = Math.atan(pctIn / 100) * (180 / Math.PI);
-        if (angleInput) angleInput.value = angIn.toFixed(4);
-    } else if (source === 'angle' && !isNaN(angIn)) {
-        let pctVal = Math.tan(angIn * Math.PI / 180) * 100;
-        if (pctInput) pctInput.value = pctVal.toFixed(4);
+    // Track whether angle/gradient vs endAlt/dist are manually entered or auto-calculated
+    if (source === 'eAlt') {
+        eAltInput.dataset.auto = '';
+        if (!isNaN(d) && distInput.dataset.auto !== '1') {
+            if (angleInput) angleInput.dataset.manual = '';
+            if (pctInput) pctInput.dataset.manual = '';
+        }
+    } else if (source === 'dist' || source === 'sDist' || source === 'eDist') {
+        distInput.dataset.auto = '';
+        if (!isNaN(eAlt) && eAltInput.dataset.auto !== '1') {
+            if (angleInput) angleInput.dataset.manual = '';
+            if (pctInput) pctInput.dataset.manual = '';
+        }
+    } else if (source === 'sAlt') {
+        if (!isNaN(eAlt) && eAltInput.dataset.auto !== '1' && !isNaN(d) && distInput.dataset.auto !== '1') {
+            if (angleInput) angleInput.dataset.manual = '';
+            if (pctInput) pctInput.dataset.manual = '';
+        }
     }
 
-    // --- 3. SOLVING LOGIC ---
-    if (!isNaN(angIn)) {
-        if (!isNaN(sAlt) && !isNaN(d) && source !== 'eAlt') {
-            // Calc E.Alt
-            let rad = angIn * Math.PI / 180;
-            let runFt = d * FT_PER_NM;
-            let rise = Math.tan(rad) * runFt;
-            let newEnd = sAlt + rise;
-            eAltInput.value = Math.round(newEnd);
+    // --- 2. PERCENT <-> ANGLE SYNC ---
+    if (source === 'pct') {
+        if (!isNaN(pctIn)) {
+            angIn = Math.atan(pctIn / 100) * (180 / Math.PI);
+            if (angleInput) {
+                angleInput.value = angIn.toFixed(4);
+                angleInput.dataset.manual = '1';
+            }
+            if (pctInput) pctInput.dataset.manual = '1';
+        } else {
+            if (angleInput) { angleInput.value = ''; angleInput.dataset.manual = ''; }
+            if (pctInput) pctInput.dataset.manual = '';
+            angIn = NaN;
         }
-        else if (!isNaN(sAlt) && !isNaN(eAlt) && isNaN(d)) {
+    } else if (source === 'angle') {
+        if (!isNaN(angIn)) {
+            let pctVal = Math.tan(angIn * Math.PI / 180) * 100;
+            if (pctInput) {
+                pctInput.value = pctVal.toFixed(4);
+                pctInput.dataset.manual = '1';
+            }
+            if (angleInput) angleInput.dataset.manual = '1';
+        } else {
+            if (pctInput) { pctInput.value = ''; pctInput.dataset.manual = ''; }
+            if (angleInput) angleInput.dataset.manual = '';
+            pctIn = NaN;
+        }
+    }
+
+    const isManualAngle = !!(angleInput && angleInput.dataset.manual === '1');
+    const isAutoEAlt = eAltInput.dataset.auto === '1';
+    const isAutoDist = distInput.dataset.auto === '1';
+
+    // --- 3. SOLVING LOGIC (only when Angle/Gradient was manually entered) ---
+    if (source && isManualAngle && !isNaN(angIn)) {
+        if (!isNaN(sAlt) && !isNaN(eAlt) && !isAutoEAlt && (isNaN(d) || isAutoDist)) {
             // Calc Dist — guard: tan(0) = 0 and tan(≥90°) = huge/undefined
-            let rise = eAlt - sAlt;
-            let rad = angIn * Math.PI / 180;
+            let rise = Math.abs(eAlt - sAlt);
+            let rad = Math.abs(angIn) * Math.PI / 180;
             if (rad > 0 && rad < Math.PI / 2) {
                 let runFt = rise / Math.tan(rad);
                 d = runFt / FT_PER_NM;
                 distInput.value = Math.abs(d).toFixed(2);
+                distInput.dataset.auto = '1';
             }
+        }
+        else if (!isNaN(sAlt) && !isNaN(d) && !isAutoDist && (isNaN(eAlt) || isAutoEAlt || source === 'pct' || source === 'angle')) {
+            // Calc E.Alt (preserve descent direction if negative angle/pct or leg is already descending)
+            let rad = Math.abs(angIn) * Math.PI / 180;
+            let runFt = d * FT_PER_NM;
+            let sign = (angIn < 0 || (!isNaN(eAlt) && eAlt < sAlt)) ? -1 : 1;
+            let rise = sign * Math.tan(rad) * runFt;
+            let newEnd = sAlt + rise;
+            eAltInput.value = Math.round(newEnd);
+            eAltInput.dataset.auto = '1';
         }
     }
 
@@ -243,6 +290,10 @@ function calculateGradient(prefix, source) {
         ftnmEl.textContent = "0";
         pctEl.textContent = "0.0%";
         angEl.textContent = "0.00°";
+        if (!isManualAngle) {
+            if (angleInput) angleInput.value = "";
+            if (pctInput) pctInput.value = "";
+        }
         if (headerInfoEl) headerInfoEl.textContent = "";
         drawGradientViz(0, 0, true, 0, prefix + 'Canvas');
         return;
@@ -273,10 +324,10 @@ function calculateGradient(prefix, source) {
         angEl.textContent = angleDeg.toFixed(2) + "°";
 
         // Auto-fill angle/pct input boxes if not manually entered
-        if (angleInput && source !== 'angle' && source !== 'pct') {
+        if (angleInput && source !== 'angle' && source !== 'pct' && !isManualAngle) {
             angleInput.value = angleDeg.toFixed(4);
         }
-        if (pctInput && source !== 'angle' && source !== 'pct') {
+        if (pctInput && source !== 'angle' && source !== 'pct' && !isManualAngle) {
             pctInput.value = percent.toFixed(4);
         }
 
