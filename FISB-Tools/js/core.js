@@ -53,12 +53,19 @@ function clearIds(...ids) {
             if (el.dataset) {
                 delete el.dataset.manual;
                 delete el.dataset.auto;
+                delete el.dataset.prefill;
+                delete el.dataset.fromSE;
+                delete el.dataset.autoDist;
             }
         }
     });
 
     // Trigger recalc if prefix provided
-    if (prefix === 'grad' || prefix.startsWith('grad')) calculateGradient(prefix);
+    if (prefix === 'grad' || prefix.startsWith('grad')) {
+        const card = document.getElementById('card-' + prefix) || document.getElementById('card-grad');
+        if (card && card.dataset) delete card.dataset.dir;
+        calculateGradient(prefix);
+    }
     if (prefix === 'val-ils-dist') calcILS(); // For ILS Profile
     if (prefix === 'fc-dist') drawILSCov(); // For ILS coverage (v1 called undefined drawFltCk)
 }

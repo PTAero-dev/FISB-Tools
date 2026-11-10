@@ -3028,12 +3028,19 @@ function clearIds(...ids) {
             if (el.dataset) {
                 delete el.dataset.manual;
                 delete el.dataset.auto;
+                delete el.dataset.prefill;
+                delete el.dataset.fromSE;
+                delete el.dataset.autoDist;
             }
         }
     });
 
     // Trigger recalc if prefix provided
-    if (prefix === 'grad' || prefix.startsWith('grad')) calculateGradient(prefix);
+    if (prefix === 'grad' || prefix.startsWith('grad')) {
+        const card = document.getElementById('card-' + prefix) || document.getElementById('card-grad');
+        if (card && card.dataset) delete card.dataset.dir;
+        calculateGradient(prefix);
+    }
     if (prefix === 'val-ils-dist') calcILS(); // For ILS Profile
     if (prefix === 'fc-dist') drawILSCov(); // For ILS coverage (v1 called undefined drawFltCk)
 }
@@ -3990,18 +3997,18 @@ function legCardHTML(id, num, prevEndAlt, prevEndDist, isFirst) {
     </div>
     <div class="leg-body">
         <div class="fields">
-            <div class="field"><label>Start Altitude</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-startAlt" placeholder="e.g. ${isFirst ? 2000 : 3000}" value="${prevEndAlt}" oninput="calculateGradient('${id}', 'sAlt')"><span class="unit">ft</span></div></div>
+            <div class="field"><label>Start Altitude</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-startAlt" placeholder="e.g. ${isFirst ? 2000 : 3000}" value="${prevEndAlt}" ${prevEndAlt !== '' ? 'data-prefill="1"' : ''} oninput="calculateGradient('${id}', 'sAlt')"><span class="unit">ft</span></div></div>
             <div class="field"><label>End Altitude</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-endAlt" placeholder="e.g. 5000" oninput="calculateGradient('${id}', 'eAlt')"><span class="unit">ft</span></div></div>
-            <div class="field"><label>Gradient <span class="opt">(optional)</span></label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-pct-in" placeholder="Calc" class="alt-input" step="0.01" onchange="calculateGradient('${id}', 'pct')"><span class="unit">%</span></div></div>
-            <div class="field"><label>Angle <span class="opt">(optional)</span></label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-angle-in" placeholder="Calc" class="alt-input" onchange="calculateGradient('${id}', 'angle')"><span class="unit">°</span></div></div>
+            <div class="field"><label>Gradient <span class="opt">(optional)</span></label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-pct-in" placeholder="Calc" class="alt-input" step="0.01" oninput="calculateGradient('${id}', 'pct')"><span class="unit">%</span></div></div>
+            <div class="field"><label>Angle <span class="opt">(optional)</span></label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-angle-in" placeholder="Calc" class="alt-input" step="0.01" oninput="calculateGradient('${id}', 'angle')"><span class="unit">°</span></div></div>
         </div>
         <div class="fields c3" style="margin-top:12px;">
             <div class="field"><label>Leg Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-dist" placeholder="e.g. 5.0" oninput="calculateGradient('${id}', 'dist')"><span class="unit">NM</span></div></div>
-            <div class="field"><label>Start Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-sdist" placeholder="--" value="${prevEndDist}" onchange="calculateGradient('${id}', 'sDist')"><span class="unit">NM</span></div></div>
-            <div class="field"><label>End Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-edist" placeholder="--" onchange="calculateGradient('${id}', 'eDist')"><span class="unit">NM</span></div></div>
+            <div class="field"><label>Start Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-sdist" placeholder="--" value="${prevEndDist}" oninput="calculateGradient('${id}', 'sDist')"><span class="unit">NM</span></div></div>
+            <div class="field"><label>End Dist</label><div class="input-wrap"><input type="number" inputmode="decimal" id="${id}-edist" placeholder="--" oninput="calculateGradient('${id}', 'eDist')"><span class="unit">NM</span></div></div>
         </div>
         <div class="leg-results">
-            <div class="stat"><div class="k">Status</div><div class="v" style="font-size:14px; margin-top:6px;"><span id="${id}-type" class="status-pill">---</span></div><div class="s" id="${id}-delta">0 ft</div></div>
+            <div class="stat"><div class="k">Status</div><div class="v" style="font-size:14px; margin-top:6px;"><span id="${id}-type" class="status-pill" onclick="toggleGradDir('${id}')" title="Click to toggle Climb / Descend" style="cursor:pointer;">---</span></div><div class="s" id="${id}-delta">0 ft</div></div>
             <div class="stat"><div class="k">ft / NM</div><div class="v res-accent" id="${id}-ftnm">0</div></div>
             <div class="stat t-cyan"><div class="k">Gradient</div><div class="v" id="${id}-percent">0.0%</div><div class="s" id="${id}-angle">0.00°</div></div>
         </div>
@@ -4085,6 +4092,17 @@ function calcGradStart(offset = 0) {
     }
 }
 
+function toggleGradDir(prefix) {
+    const gradCont = document.getElementById('grad-legs-container');
+    const allLegCards = gradCont ? Array.from(gradCont.querySelectorAll('.leg-card')) : [];
+    const card = (prefix === 'grad') ? allLegCards[0] : document.getElementById('card-' + prefix);
+    if (!card) return;
+    const typeEl = document.getElementById(prefix + '-type');
+    const cur = card.dataset.dir || (typeEl && typeEl.textContent === 'DESCEND' ? 'descend' : 'climb');
+    card.dataset.dir = (cur === 'descend') ? 'climb' : 'descend';
+    calculateGradient(prefix, 'dir');
+}
+
 function calculateGradient(prefix, source) {
     const sAltInput = document.getElementById(prefix + '-startAlt');
     const eAltInput = document.getElementById(prefix + '-endAlt');
@@ -4096,35 +4114,69 @@ function calculateGradient(prefix, source) {
 
     if (!sAltInput || !eAltInput || !distInput) return;
 
-    // --- 1. BIDIRECTIONAL DISTANCE LOGIC (Input 2 -> Calc 3rd) ---
+    // Wait while user is mid-typing a sign (e.g. '-') in a number input
+    const activeEl = {
+        sAlt: sAltInput, eAlt: eAltInput, dist: distInput,
+        sDist: sDistInput, eDist: eDistInput, angle: angleInput, pct: pctInput
+    }[source];
+    if (activeEl && activeEl.validity && activeEl.validity.badInput) return;
+
+    const gradCont = document.getElementById('grad-legs-container');
+    const allLegCards = gradCont ? Array.from(gradCont.querySelectorAll('.leg-card')) : [];
+    const currentCard = (prefix === 'grad')
+        ? allLegCards[0]
+        : document.getElementById('card-' + prefix);
+
+    // --- 1. BIDIRECTIONAL DISTANCE LOGIC (Input any 2 -> Calc 3rd) ---
     let sd = parseFloat(sDistInput ? sDistInput.value : NaN);
     let ed = parseFloat(eDistInput ? eDistInput.value : NaN);
     let d = parseFloat(distInput.value);
 
     if (source === 'sDist' || source === 'eDist' || source === 'dist') {
         if (source === 'dist') {
+            distInput.dataset.fromSE = '';
+            distInput.dataset.auto = '';
             if (!isNaN(d)) {
-                if (!isNaN(sd)) {
-                    eDistInput.value = (sd + d).toFixed(2);       // S + D -> E
-                } else if (!isNaN(ed)) {
-                    sDistInput.value = (ed - d).toFixed(2);       // E - D -> S
+                if (!isNaN(sd) && (isNaN(ed) || (eDistInput && eDistInput.dataset.autoDist === '1'))) {
+                    eDistInput.value = (sd + d).toFixed(2);
+                    eDistInput.dataset.autoDist = '1';
+                } else if (!isNaN(ed) && (isNaN(sd) || (sDistInput && sDistInput.dataset.autoDist === '1'))) {
+                    sDistInput.value = (ed - d).toFixed(2);
+                    sDistInput.dataset.autoDist = '1';
                 }
+            } else {
+                if (eDistInput && eDistInput.dataset.autoDist === '1') { eDistInput.value = ''; eDistInput.dataset.autoDist = ''; }
+                if (sDistInput && sDistInput.dataset.autoDist === '1') { sDistInput.value = ''; sDistInput.dataset.autoDist = ''; }
             }
         } else if (source === 'sDist') {
+            if (sDistInput) sDistInput.dataset.autoDist = '';
             if (!isNaN(sd)) {
-                if (!isNaN(d)) {
-                    eDistInput.value = (sd + d).toFixed(2);       // S + D -> E
-                } else if (!isNaN(ed)) {
-                    distInput.value = Math.abs(ed - sd).toFixed(2); // E - S -> D
+                if (!isNaN(ed) && (isNaN(d) || distInput.dataset.fromSE === '1' || distInput.dataset.auto === '1')) {
+                    distInput.value = Math.abs(ed - sd).toFixed(2);
+                    distInput.dataset.fromSE = '1';
+                    distInput.dataset.auto = '';
+                } else if (!isNaN(d) && (isNaN(ed) || (eDistInput && eDistInput.dataset.autoDist === '1'))) {
+                    eDistInput.value = (sd + d).toFixed(2);
+                    eDistInput.dataset.autoDist = '1';
                 }
+            } else {
+                if (distInput.dataset.fromSE === '1') { distInput.value = ''; distInput.dataset.fromSE = ''; }
+                if (eDistInput && eDistInput.dataset.autoDist === '1') { eDistInput.value = ''; eDistInput.dataset.autoDist = ''; }
             }
         } else if (source === 'eDist') {
+            if (eDistInput) eDistInput.dataset.autoDist = '';
             if (!isNaN(ed)) {
-                if (!isNaN(d)) {
-                    sDistInput.value = (ed - d).toFixed(2);       // E - D -> S
-                } else if (!isNaN(sd)) {
-                    distInput.value = Math.abs(ed - sd).toFixed(2); // E - S -> D
+                if (!isNaN(sd) && (isNaN(d) || distInput.dataset.fromSE === '1' || distInput.dataset.auto === '1')) {
+                    distInput.value = Math.abs(ed - sd).toFixed(2);
+                    distInput.dataset.fromSE = '1';
+                    distInput.dataset.auto = '';
+                } else if (!isNaN(d) && (isNaN(sd) || (sDistInput && sDistInput.dataset.autoDist === '1'))) {
+                    sDistInput.value = (ed - d).toFixed(2);
+                    sDistInput.dataset.autoDist = '1';
                 }
+            } else {
+                if (distInput.dataset.fromSE === '1') { distInput.value = ''; distInput.dataset.fromSE = ''; }
+                if (sDistInput && sDistInput.dataset.autoDist === '1') { sDistInput.value = ''; sDistInput.dataset.autoDist = ''; }
             }
         }
     }
@@ -4136,91 +4188,127 @@ function calculateGradient(prefix, source) {
     let angIn = parseFloat(angleInput ? angleInput.value : NaN);
     let pctIn = parseFloat(pctInput ? pctInput.value : NaN);
 
-    // Track whether angle/gradient vs endAlt/dist are manually entered or auto-calculated
-    if (source === 'eAlt') {
+    // --- 2. USER / AUTO FLAGS & PERCENT <-> ANGLE SYNC ---
+    if (source === 'sAlt') {
+        sAltInput.dataset.auto = '';
+        sAltInput.dataset.prefill = '';
+        if (currentCard && !isNaN(eAlt) && eAltInput.dataset.auto !== '1') currentCard.dataset.dir = '';
+    } else if (source === 'eAlt') {
         eAltInput.dataset.auto = '';
-        if (!isNaN(d) && distInput.dataset.auto !== '1') {
-            if (angleInput) angleInput.dataset.manual = '';
-            if (pctInput) pctInput.dataset.manual = '';
-        }
-    } else if (source === 'dist' || source === 'sDist' || source === 'eDist') {
-        distInput.dataset.auto = '';
-        if (!isNaN(eAlt) && eAltInput.dataset.auto !== '1') {
-            if (angleInput) angleInput.dataset.manual = '';
-            if (pctInput) pctInput.dataset.manual = '';
-        }
-    } else if (source === 'sAlt') {
-        if (!isNaN(eAlt) && eAltInput.dataset.auto !== '1' && !isNaN(d) && distInput.dataset.auto !== '1') {
-            if (angleInput) angleInput.dataset.manual = '';
-            if (pctInput) pctInput.dataset.manual = '';
-        }
-    }
-
-    // --- 2. PERCENT <-> ANGLE SYNC ---
-    if (source === 'pct') {
+        if (currentCard && !isNaN(sAlt) && sAltInput.dataset.auto !== '1') currentCard.dataset.dir = '';
+    } else if (source === 'pct') {
+        if (pctInput) pctInput.dataset.auto = '';
+        if (angleInput) angleInput.dataset.auto = '';
         if (!isNaN(pctIn)) {
             angIn = Math.atan(pctIn / 100) * (180 / Math.PI);
-            if (angleInput) {
-                angleInput.value = angIn.toFixed(4);
-                angleInput.dataset.manual = '1';
-            }
-            if (pctInput) pctInput.dataset.manual = '1';
+            if (angleInput) angleInput.value = angIn.toFixed(4);
         } else {
-            if (angleInput) { angleInput.value = ''; angleInput.dataset.manual = ''; }
-            if (pctInput) pctInput.dataset.manual = '';
+            if (angleInput) angleInput.value = '';
             angIn = NaN;
         }
     } else if (source === 'angle') {
+        if (pctInput) pctInput.dataset.auto = '';
+        if (angleInput) angleInput.dataset.auto = '';
         if (!isNaN(angIn)) {
-            let pctVal = Math.tan(angIn * Math.PI / 180) * 100;
-            if (pctInput) {
-                pctInput.value = pctVal.toFixed(4);
-                pctInput.dataset.manual = '1';
-            }
-            if (angleInput) angleInput.dataset.manual = '1';
+            pctIn = Math.tan(angIn * Math.PI / 180) * 100;
+            if (pctInput) pctInput.value = pctIn.toFixed(4);
         } else {
-            if (pctInput) { pctInput.value = ''; pctInput.dataset.manual = ''; }
-            if (angleInput) angleInput.dataset.manual = '';
+            if (pctInput) pctInput.value = '';
             pctIn = NaN;
         }
     }
 
-    const isManualAngle = !!(angleInput && angleInput.dataset.manual === '1');
-    const isAutoEAlt = eAltInput.dataset.auto === '1';
-    const isAutoDist = distInput.dataset.auto === '1';
+    // --- 3. 4-WAY ANY-ORDER SOLVER (Input any 3 -> Calc 4th: Start Alt, End Alt, Dist, or Gradient/Angle) ---
+    if (source) {
+        let userSAlt = !isNaN(sAlt) && sAltInput.dataset.auto !== '1';
+        let userEAlt = !isNaN(eAlt) && eAltInput.dataset.auto !== '1';
+        let userSlope = !isNaN(angIn) && (!angleInput || angleInput.dataset.auto !== '1');
+        let userDist = !isNaN(d) && d > 0 && distInput.dataset.auto !== '1';
 
-    // --- 3. SOLVING LOGIC (only when Angle/Gradient was manually entered) ---
-    if (source && isManualAngle && !isNaN(angIn)) {
-        if (!isNaN(sAlt) && !isNaN(eAlt) && !isAutoEAlt && (isNaN(d) || isAutoDist)) {
-            // Calc Dist — guard: tan(0) = 0 and tan(≥90°) = huge/undefined
-            let rise = Math.abs(eAlt - sAlt);
-            let rad = Math.abs(angIn) * Math.PI / 180;
-            if (rad > 0 && rad < Math.PI / 2) {
-                let runFt = rise / Math.tan(rad);
-                d = runFt / FT_PER_NM;
-                distInput.value = Math.abs(d).toFixed(2);
-                distInput.dataset.auto = '1';
+        // If Start Altitude was only pre-filled from previous leg and user explicitly entered the other 3, solve Start Altitude
+        if (userSAlt && sAltInput.dataset.prefill === '1' && userEAlt && userSlope && userDist) {
+            sAltInput.dataset.prefill = '';
+            sAltInput.dataset.auto = '1';
+            userSAlt = false;
+        }
+
+        // If all 4 are marked user-entered (user just edited the previously auto-calculated box),
+        // pick the new target box based on what was edited:
+        if (userSAlt && userEAlt && userSlope && userDist) {
+            if (source === 'pct' || source === 'angle' || source === 'dir') {
+                eAltInput.dataset.auto = '1';
+                userEAlt = false;
+            } else {
+                if (angleInput) angleInput.dataset.auto = '1';
+                if (pctInput) pctInput.dataset.auto = '1';
+                userSlope = false;
             }
         }
-        else if (!isNaN(sAlt) && !isNaN(d) && !isAutoDist && (isNaN(eAlt) || isAutoEAlt || source === 'pct' || source === 'angle')) {
-            // Calc E.Alt (preserve descent direction if negative angle/pct or leg is already descending)
-            let rad = Math.abs(angIn) * Math.PI / 180;
-            let runFt = d * FT_PER_NM;
-            let sign = (angIn < 0 || (!isNaN(eAlt) && eAlt < sAlt)) ? -1 : 1;
-            let rise = sign * Math.tan(rad) * runFt;
-            let newEnd = sAlt + rise;
-            eAltInput.value = Math.round(newEnd);
-            eAltInput.dataset.auto = '1';
+
+        const userCount = (userSAlt ? 1 : 0) + (userEAlt ? 1 : 0) + (userSlope ? 1 : 0) + (userDist ? 1 : 0);
+
+        if (userCount === 3) {
+            if (!userSAlt && source !== 'sAlt') {
+                // Solve Start Altitude (backward calculation from End Altitude, Gradient/Angle, and Dist)
+                let rad = Math.abs(angIn) * Math.PI / 180;
+                let runFt = d * FT_PER_NM;
+                let rise = Math.tan(rad) * runFt;
+                let dir = currentCard ? currentCard.dataset.dir : '';
+                let isDescend = dir ? (dir === 'descend') : true; // Backward calc defaults to descend (Start Alt > End Alt)
+                if (angIn < 0 || pctIn < 0) isDescend = true;
+                sAlt = isDescend ? (eAlt + rise) : (eAlt - rise);
+                sAltInput.value = Math.round(sAlt);
+                sAltInput.dataset.auto = '1';
+            } else if (!userEAlt && source !== 'eAlt') {
+                // Solve End Altitude (forward calculation from Start Altitude, Gradient/Angle, and Dist)
+                let rad = Math.abs(angIn) * Math.PI / 180;
+                let runFt = d * FT_PER_NM;
+                let rise = Math.tan(rad) * runFt;
+                let dir = currentCard ? currentCard.dataset.dir : '';
+                let isDescend = dir
+                    ? (dir === 'descend')
+                    : (angIn < 0 || pctIn < 0 || (!isNaN(sd) && !isNaN(ed) && ed < sd) || (!isNaN(eAlt) && eAlt < sAlt));
+                eAlt = isDescend ? (sAlt - rise) : (sAlt + rise);
+                eAltInput.value = Math.round(eAlt);
+                eAltInput.dataset.auto = '1';
+            } else if (!userDist && source !== 'dist' && source !== 'sDist' && source !== 'eDist') {
+                // Solve Leg Distance (from Start Altitude, End Altitude, and Gradient/Angle)
+                let rise = Math.abs(eAlt - sAlt);
+                let rad = Math.abs(angIn) * Math.PI / 180;
+                if (rad > 0 && rad < Math.PI / 2) {
+                    let runFt = rise / Math.tan(rad);
+                    d = runFt / FT_PER_NM;
+                    distInput.value = Math.abs(d).toFixed(2);
+                    distInput.dataset.auto = '1';
+                    if (!isNaN(sd) && (isNaN(ed) || (eDistInput && eDistInput.dataset.autoDist === '1'))) {
+                        eDistInput.value = (sd + d).toFixed(2);
+                        eDistInput.dataset.autoDist = '1';
+                    } else if (!isNaN(ed) && (isNaN(sd) || (sDistInput && sDistInput.dataset.autoDist === '1'))) {
+                        sDistInput.value = (ed - d).toFixed(2);
+                        sDistInput.dataset.autoDist = '1';
+                    }
+                }
+            } else if (!userSlope && source !== 'pct' && source !== 'angle') {
+                // Solve Gradient % & Angle ° (populated in Section 4 below)
+                if (angleInput) angleInput.dataset.auto = '1';
+                if (pctInput) pctInput.dataset.auto = '1';
+            }
+        } else if (userCount < 3) {
+            // Fewer than 3 user inputs: clear any stale auto-calculated field
+            if (sAltInput.dataset.auto === '1') { sAltInput.value = ''; sAltInput.dataset.auto = ''; }
+            if (eAltInput.dataset.auto === '1') { eAltInput.value = ''; eAltInput.dataset.auto = ''; }
+            if (distInput.dataset.auto === '1') {
+                distInput.value = ''; distInput.dataset.auto = '';
+                if (eDistInput && eDistInput.dataset.autoDist === '1') { eDistInput.value = ''; eDistInput.dataset.autoDist = ''; }
+                if (sDistInput && sDistInput.dataset.autoDist === '1') { sDistInput.value = ''; sDistInput.dataset.autoDist = ''; }
+            }
+            if (angleInput && angleInput.dataset.auto === '1') { angleInput.value = ''; angleInput.dataset.auto = ''; }
+            if (pctInput && pctInput.dataset.auto === '1') { pctInput.value = ''; pctInput.dataset.auto = ''; }
         }
     }
 
-    // --- 3. AUTO-SYNC NEXT LEG ---
+    // --- 4. AUTO-SYNC NEXT LEG ---
     eAlt = parseFloat(eAltInput.value);
-    const gradCont = document.getElementById('grad-legs-container');
-    const allLegCards = gradCont ? Array.from(gradCont.querySelectorAll('.leg-card')) : [];
-    const currentCard = (prefix === 'grad')
-        ? allLegCards[0]
-        : document.getElementById('card-' + prefix);
     const currentIdx = allLegCards.indexOf(currentCard);
     if (currentIdx !== -1 && currentIdx < allLegCards.length - 1) {
         const nextCard = allLegCards[currentIdx + 1];
@@ -4229,8 +4317,9 @@ function calculateGradient(prefix, source) {
         const nextStartDistEl = document.getElementById(nextPrefix + '-sdist');
 
         if (nextStartEl && !isNaN(eAlt)) {
-            if (nextStartEl.value === "") {
+            if (nextStartEl.value === "" || nextStartEl.dataset.prefill === '1') {
                 nextStartEl.value = Math.round(eAlt);
+                nextStartEl.dataset.prefill = '1';
                 calculateGradient(nextPrefix);
             }
         }
@@ -4242,7 +4331,7 @@ function calculateGradient(prefix, source) {
         }
     }
 
-    // --- 4. STANDARD CALCULATION & VIZ ---
+    // --- 5. STANDARD CALCULATION & VIZ ---
     sAlt = parseFloat(sAltInput.value);
     eAlt = parseFloat(eAltInput.value);
     d = parseFloat(distInput.value);
@@ -4253,7 +4342,6 @@ function calculateGradient(prefix, source) {
     const pctEl = document.getElementById(prefix + '-percent');
     const angEl = document.getElementById(prefix + '-angle');
     const headerInfoEl = document.getElementById(prefix + '-header-info');
-    const canvas = document.getElementById(prefix + 'Canvas');
 
     scheduleGradProfile();
 
@@ -4263,10 +4351,6 @@ function calculateGradient(prefix, source) {
         ftnmEl.textContent = "0";
         pctEl.textContent = "0.0%";
         angEl.textContent = "0.00°";
-        if (!isManualAngle) {
-            if (angleInput) angleInput.value = "";
-            if (pctInput) pctInput.value = "";
-        }
         if (headerInfoEl) headerInfoEl.textContent = "";
         drawGradientViz(0, 0, true, 0, prefix + 'Canvas');
         return;
@@ -4296,11 +4380,11 @@ function calculateGradient(prefix, source) {
         pctEl.textContent = percent.toFixed(2) + "%";
         angEl.textContent = angleDeg.toFixed(2) + "°";
 
-        // Auto-fill angle/pct input boxes if not manually entered
-        if (angleInput && source !== 'angle' && source !== 'pct' && !isManualAngle) {
+        // Auto-fill angle/pct input boxes when they are the calculated output
+        if (angleInput && angleInput.dataset.auto === '1' && source !== 'angle' && source !== 'pct') {
             angleInput.value = angleDeg.toFixed(4);
         }
-        if (pctInput && source !== 'angle' && source !== 'pct' && !isManualAngle) {
+        if (pctInput && pctInput.dataset.auto === '1' && source !== 'angle' && source !== 'pct') {
             pctInput.value = percent.toFixed(4);
         }
 
