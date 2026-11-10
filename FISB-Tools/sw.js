@@ -1,5 +1,5 @@
 // AEROTHAI FISB Tools (NOV 26) — Offline PWA Service Worker
-const CACHE_NAME = 'fisb-tools-nov26-v1';
+const CACHE_NAME = 'fisb-tools-nov26-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
